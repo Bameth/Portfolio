@@ -18,6 +18,8 @@ export const projectsData = [
             '/imageges/listeges.jpeg',
             '/image/mesreservations.jpeg',
             '/image/reservationsgestionaire.jpeg',
+            '/image/confirm.jpeg',
+            '/image/dispo.jpeg',
             '/imageges/info.jpeg',
             '/imageges/twiio.jpg',
             '/imageges/confirmation.jpg',
