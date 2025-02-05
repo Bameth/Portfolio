@@ -122,9 +122,9 @@ export const projectsData = [
     },
     {
         id: 6,
-        name: 'Gestion Dette pour une boutique',
+        name: 'Gestion Dette pour une boutique Console-Desktop',
         description: "L'application console en Java pour la gestion du cahier de dettes d'une boutique permet de gérer efficacement clients, dettes, paiements et articles selon trois rôles (Boutiquier, Admin, Client). Elle offre plusieurs versions : gestion en mémoire (LIST), JDBC (MySQL/PostgreSQL), JPA (Hibernate) et JavaFX pour l'interface graphique. Configurable via persistence.xml et config.yaml, elle respecte les principes SOLID avec une structure modulaire. Les fonctionnalités incluent la création et gestion de clients, dettes, paiements, demandes de dettes, articles, et comptes utilisateurs. Facilement installable avec Maven, elle utilise Lombok, JDBC, et Hibernate pour des bases de données MySQL ou PostgreSQL. Conçue par Ameth BA, étudiant en génie logiciel, l'application est maintenable et évolutive.",
-        tools: ['PHP', 'MYSQL', 'JavaScript', 'Tailwind CSS', 'Composer', 'PhpMyAdmin'],
+        tools: ['JAVA', 'MYSQL', 'PostgreSQL', 'JDBC', 'JPA', 'LIST', 'Hibernate', 'JavaFX', 'Maven', 'Lombok', 'PhpMyAdmin'],
         role: 'Full Stack Developer',
         code: '',
         demo: '',
