@@ -53,6 +53,12 @@ export const projectsData = [
             '/image/solde.jpeg',
             '/image/listeclient.jpeg',
             '/image/detailclient.jpeg',
+            '/image/client.jpeg',
+            '/image/commandeGes.jpeg',
+            '/image/detcom.jpeg',
+            '/image/detcomm.jpeg',
+            '/image/modpa.jpeg',
+            '/image/planifier2.jpeg',
         ],
     },
     {
