@@ -23,6 +23,7 @@ export const projectsData = [
             '/imageges/info.jpeg',
             '/imageges/twiio.jpg',
             '/imageges/confirmation.jpg',
+            '/image/terrain.jpeg',
         ],
     },
     {
