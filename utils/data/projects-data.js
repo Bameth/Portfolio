@@ -24,9 +24,9 @@ export const projectsData = [
             '/imageges/twiio.jpg',
             '/imageges/confirmation.jpg',
             '/image/terrain.jpeg',
-            '/imageges/newviewclient.jpeg',
-            '/imageges/infoClient.jpeg',
-            '/imageges/404.jpeg',
+            '/image/newviewclient.jpeg',
+            '/image/infoClient.jpeg',
+            '/image/404.jpeg',
         ],
     },
     {
