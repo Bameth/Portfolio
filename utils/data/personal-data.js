@@ -2,7 +2,7 @@ export const personalData = {
   name: "AMETH BA",
   profile: '/ameth.jpg',
   designation: "Développeur Full-Stack",
-  description: "Je suis un étudiant en génie logiciel passionné par la programmation et l’ingénierie informatique, actuellement basé au Sénégal. Ma spécialité réside dans le développement web, les systèmes backend et la gestion des bases de données. Fort d'une solide expérience dans des technologies variées comme PHP, Java, C#, Python, SQL, Javascript et des frameworks backend comme Spring Boot, Symfony, ainsi que des frameworks frontend comme Tailwind CSS et Bootstrap, j'aime créer des solutions innovantes, sécurisées et performantes.",
+  description: "Je suis un étudiant en génie logiciel passionné par la programmation et l’ingénierie informatique, actuellement basé au Sénégal. Ma spécialité réside dans le développement web, les systèmes backend et la gestion des bases de données. Fort d'une solide expérience dans des technologies variées comme PHP, Java, C#, Python, SQL, Javascript et des frameworks backend comme Spring Boot, Symfony, ASP.NET MVC, Flask, Angular ainsi que des frameworks frontend comme Tailwind CSS et Bootstrap, j'aime créer des solutions innovantes, sécurisées et performantes.",
   email: 'amethba8826@gmail.com',
   phone: '+221781069049',
   address: 'Dakar, Senegal',

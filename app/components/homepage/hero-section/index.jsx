@@ -137,6 +137,8 @@ function HeroSection() {
                 <span className="text-gray-400">{"', '"}</span>
                 <span className="text-amber-300">Spring-Boot</span>
                 <span className="text-gray-400">{"', '"}</span>
+                <span className="text-amber-300">ASP.NET MVC</span>
+                <span className="text-gray-400">{"', '"}</span>
                 <span className="text-amber-300">Tailwind css</span>
                 <span className="text-gray-400">{"', '"}</span>
                 <span className="text-amber-300">Bootstrap</span>
