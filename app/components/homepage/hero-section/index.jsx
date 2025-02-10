@@ -126,7 +126,6 @@ function HeroSection() {
                 <span className="text-gray-400">{"', '"}</span>
                 <span className="text-amber-300">Symfony</span>
                 <span className="text-gray-400">{"', '"}</span>
-                <span className="text-gray-400">{"', '"}</span>
                 <span className="text-amber-300">Angular</span>
                 <span className="text-gray-400">{"', '"}</span>
                 <span className="text-amber-300">React</span>
