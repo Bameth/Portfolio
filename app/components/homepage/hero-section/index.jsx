@@ -124,6 +124,10 @@ function HeroSection() {
                 <span className="text-gray-400">{"', '"}</span>
                 <span className="text-amber-300">C#</span>
                 <span className="text-gray-400">{"', '"}</span>
+                <span className="text-amber-300">Dart</span>
+                <span className="text-gray-400">{"', '"}</span>
+                <span className="text-amber-300">Flutter</span>
+                <span className="text-gray-400">{"', '"}</span>
                 <span className="text-amber-300">Symfony</span>
                 <span className="text-gray-400">{"', '"}</span>
                 <span className="text-amber-300">Angular</span>
