@@ -1,28 +1,30 @@
 "use client";
 import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronLeft, ChevronRight, X } from 'lucide-react';
+import { ChevronLeft, ChevronRight, X, Eye, Github, ExternalLink } from 'lucide-react';
 
-function ProjectCard({ project }) {
+function ProjectCard({ project, index }) {
   const [showModal, setShowModal] = useState(false);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
+  const [isLoaded, setIsLoaded] = useState(false);
 
   useEffect(() => {
     project.images.forEach((src) => {
       const img = new Image();
       img.src = src;
     });
-  }, []);
-  
+    setIsLoaded(true);
+  }, [project.images]);
 
-  const openModal = (index = 0) => {
-    setSelectedImageIndex(index);
+  const openModal = (imageIndex = 0) => {
+    setSelectedImageIndex(imageIndex);
     setShowModal(true);
+    document.body.style.overflow = 'hidden';
   };
 
   const closeModal = () => {
     setShowModal(false);
     setSelectedImageIndex(0);
+    document.body.style.overflow = 'unset';
   };
 
   const navigateImage = (direction) => {
@@ -37,172 +39,261 @@ function ProjectCard({ project }) {
   };
 
   return (
-    <div className="from-[#0d1224] border-[#1b2c68a0] relative rounded-lg border bg-gradient-to-r to-[#0a0d37] w-full">
-      <div className="flex flex-row">
-        <div className="h-[1px] w-full bg-gradient-to-r from-transparent via-pink-500 to-violet-600"></div>
-        <div className="h-[1px] w-full bg-gradient-to-r from-violet-600 to-transparent"></div>
-      </div>
-      <div className="px-4 lg:px-8 py-3 lg:py-5 relative">
-        <div className="flex flex-row space-x-1 lg:space-x-2 absolute top-1/2 -translate-y-1/2">
-          <div className="h-2 w-2 lg:h-3 lg:w-3 rounded-full bg-red-400"></div>
-          <div className="h-2 w-2 lg:h-3 lg:w-3 rounded-full bg-orange-400"></div>
-          <div className="h-2 w-2 lg:h-3 lg:w-3 rounded-full bg-green-200"></div>
+    <>
+      <div
+        className={`group relative bg-gradient-to-br from-[#0d1224] via-[#1a1443] to-[#0a0d37] border border-[#1b2c68a0] rounded-2xl overflow-hidden shadow-xl hover:shadow-2xl hover:shadow-purple-500/10 transition-all duration-500 hover:-translate-y-2 ${isLoaded ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
+          }`}
+        style={{
+          transitionDelay: `${index * 0.1}s`
+        }}
+      >
+        {/* Animated border effect */}
+        <div className="absolute inset-0 rounded-2xl bg-gradient-to-r from-transparent via-[#16f2b3]/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 blur-sm" />
+
+        {/* Header with terminal dots */}
+        <div className="relative">
+          <div className="flex flex-row">
+            <div className="h-[1px] w-full bg-gradient-to-r from-transparent via-pink-500 to-violet-600"></div>
+            <div className="h-[1px] w-full bg-gradient-to-r from-violet-600 to-transparent"></div>
+          </div>
+          <div className="px-6 py-4 relative">
+            <div className="flex flex-row space-x-2 absolute top-1/2 -translate-y-1/2">
+              <div className="h-3 w-3 rounded-full bg-red-400 animate-pulse" />
+              <div className="h-3 w-3 rounded-full bg-orange-400 animate-pulse" style={{ animationDelay: '0.2s' }} />
+              <div className="h-3 w-3 rounded-full bg-green-400 animate-pulse" style={{ animationDelay: '0.4s' }} />
+            </div>
+            <p className="text-center text-[#16f2b3] text-lg font-semibold truncate ml-16">
+              {project.name}
+            </p>
+          </div>
         </div>
-        <p className="text-center ml-3 text-[#16f2b3] text-base lg:text-xl">
-          {project.name}
-        </p>
-      </div>
-      <div className="overflow-hidden border-t-[2px] border-indigo-900 px-4 lg:px-8 py-4 lg:py-8">
-        <code className="font-mono text-xs md:text-sm lg:text-base">
-          <div className="blink">
-            <span className="mr-2 text-pink-500">const</span>
-            <span className="mr-2 text-white">project</span>
-            <span className="mr-2 text-pink-500">=</span>
-            <span className="text-gray-400">{'{'}</span>
-          </div>
-          <div>
-            <span className="ml-4 lg:ml-8 mr-2 text-white">name:</span>
-            <span className="text-gray-400">{`'`}</span>
-            <span className="text-amber-300">{project.name}</span>
-            <span className="text-gray-400">{`',`}</span>
-          </div>
-          <div className="ml-4 lg:ml-8 mr-2">
-            <span className=" text-white">tools:</span>
-            <span className="text-gray-400">{` ['`}</span>
-            {project.tools.map((tag, i) => (
-              <React.Fragment key={i}>
-                <span className="text-amber-300">{tag}</span>
-                {project.tools?.length - 1 !== i && (
-                  <span className="text-gray-400">{`', '`}</span>
-                )}
-              </React.Fragment>
-            ))}
-            <span className="text-gray-400">{"],"}</span>
-          </div>
-          <div>
-            <span className="ml-4 lg:ml-8 mr-2 text-white">myRole:</span>
-            <span className="text-orange-400">{project.role}</span>
-            <span className="text-gray-400">,</span>
-          </div>
-          <div>
-            <span className="text-white">Description:</span>
-            <span className="text-cyan-400">{' ' + project.description}</span>
-            <span className="text-gray-400">,</span>
-          </div>
-          <div>
-            <span className="text-gray-400">{`};`}</span>
-          </div>
-          <div className="flex justify-center mt-4">
-            <button
-              className="bg-gradient-to-r from-[#1b2c68] to-[#3b4a9e] text-white px-6 py-3 rounded-lg hover:bg-gradient-to-l hover:from-[#3b4a9e] hover:to-[#1b2c68] transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-[#16f2b3] shadow-lg transition-all duration-300 ease-in-out"
-              onClick={() => openModal()}
-            >
-              Voir Images
-            </button>
-            {project.demo && (
-              <a href={project.demo} target="_blank" rel="noopener noreferrer">
-                <button className="bg-gradient-to-r from-[#4e7fb7] to-[#3b6a97] text-white px-6 py-3 rounded-lg hover:bg-gradient-to-l hover:from-[#3b6a97] hover:to-[#4e7fb7] transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-[#16f2b3] shadow-lg transition-all duration-300 ease-in-out ml-4">
-                  Voir Demo
-                </button>
-              </a>
+
+        {/* Image preview */}
+        <div className="px-6 mb-4">
+          <div
+            className="relative h-40 bg-gradient-to-br from-gray-800 to-gray-900 rounded-xl overflow-hidden cursor-pointer group/image hover:scale-105 transition-transform duration-300"
+            onClick={() => openModal(0)}
+          >
+            <img
+              src={project.images[0]}
+              alt={project.name}
+              className="w-full h-full object-cover transition-transform duration-700 group-hover/image:scale-110"
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover/image:opacity-100 transition-opacity duration-300" />
+
+            {/* View gallery button */}
+            <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover/image:opacity-100 transition-all duration-300">
+              <button className="flex items-center space-x-2 px-4 py-2 bg-[#16f2b3]/90 text-black rounded-lg font-medium hover:bg-[#16f2b3] transition-colors duration-200 transform hover:scale-105">
+                <Eye size={16} />
+                <span className="text-sm">Voir Images</span>
+              </button>
+            </div>
+
+            {/* Image counter */}
+            {project.images.length > 1 && (
+              <div className="absolute top-3 right-3 px-2 py-1 bg-black/60 text-white text-xs rounded-full">
+                {project.images.length} photos
+              </div>
             )}
           </div>
-        </code>
+        </div>
+
+        {/* Code-style content */}
+        <div className="px-6 pb-6">
+          <div className="bg-[#0a0d37]/50 border border-indigo-900/50 rounded-xl p-4 font-mono text-sm">
+            <div className="space-y-1">
+              <div>
+                <span className="text-pink-500">const</span>
+                <span className="text-white ml-2">project</span>
+                <span className="text-pink-500 ml-2">=</span>
+                <span className="text-gray-400 ml-2">{'{'}</span>
+              </div>
+
+              <div className="ml-4">
+                <span className="text-white">tools:</span>
+                <span className="text-gray-400 ml-1">[</span>
+                <div className="ml-4 flex flex-wrap gap-1 mt-1">
+                  {project.tools.slice(0, 4).map((tool, i) => (
+                    <span key={i} className="px-2 py-1 bg-amber-500/20 text-amber-300 rounded text-xs border border-amber-500/30 hover:bg-amber-500/30 hover:scale-105 transition-all duration-200">
+                      {tool}
+                    </span>
+                  ))}
+                  {project.tools.length > 4 && (
+                    <span className="px-2 py-1 bg-purple-500/20 text-purple-300 rounded text-xs border border-purple-500/30 hover:bg-purple-500/30 transition-all duration-200">
+                      +{project.tools.length - 4}
+                    </span>
+                  )}
+                </div>
+                <span className="text-gray-400">],</span>
+              </div>
+
+              <div className="ml-4">
+                <span className="text-white">role:</span>
+                <span className="text-orange-400 ml-1">"{project.role}"</span>
+                <span className="text-gray-400">,</span>
+              </div>
+
+              <div className="ml-4">
+                <span className="text-white">status:</span>
+                <span className="text-cyan-400 ml-1">{project.status}</span>
+              </div>
+
+              <div>
+                <span className="text-gray-400">{'};'}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Action buttons */}
+          <div className="flex items-center justify-between mt-4">
+            <button
+              onClick={() => openModal(0)}
+              className="flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-[#1b2c68] to-[#3b4a9e] text-white rounded-lg hover:from-[#3b4a9e] hover:to-[#1b2c68] transition-all duration-300 hover:scale-105 shadow-lg"
+            >
+              <Eye size={16} />
+              <span className="text-sm">Galerie</span>
+            </button>
+
+            <div className="flex space-x-2">
+              {project.code && (
+                <a
+                  href={project.code}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="p-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-all duration-300 hover:scale-110 hover:rotate-12"
+                >
+                  <Github size={16} />
+                </a>
+              )}
+              {project.demo && (
+                <a
+                  href={project.demo}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="p-2 bg-[#16f2b3] hover:bg-[#14d9a5] text-black rounded-lg transition-all duration-300 hover:scale-110 hover:rotate-12"
+                >
+                  <ExternalLink size={16} />
+                </a>
+              )}
+            </div>
+          </div>
+        </div>
       </div>
 
-      <AnimatePresence>
-        {showModal && (
-          <motion.div 
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-80"
-            style={{
-              zIndex: 9999,
-              position: 'fixed',
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0
-            }}
+      {/* Modal Gallery */}
+      {showModal && (
+        <div
+          className="fixed inset-0 bg-black/90 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fadeIn"
+          onClick={closeModal}
+        >
+          <div
+            className="bg-[#0d1224] rounded-2xl border border-[#1b2c68a0] shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden animate-slideInUp"
+            onClick={(e) => e.stopPropagation()}
           >
-            <motion.div 
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
-              transition={{ type: "spring", stiffness: 300, damping: 20 }}
-              className="bg-[#0d1224] rounded-2xl shadow-2xl p-6 lg:p-10 w-11/12 md:w-3/4 lg:w-3/4 xl:w-2/3 max-h-[90vh] relative overflow-hidden"
-              style={{ zIndex: 10000 }}
-            >
-              <button
-                onClick={closeModal}
-                className="absolute top-4 right-4 text-white hover:text-red-400 transition-colors duration-300"
-                style={{ zIndex: 10001 }}
-              >
-                <X size={36} strokeWidth={2} />
-              </button>
-
-              <h3 className="text-center text-2xl text-[#16f2b3] mb-6 font-bold">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between p-6 border-b border-[#1b2c68a0]">
+              <h3 className="text-2xl font-bold text-[#16f2b3]">
                 {project.name} - Galerie
               </h3>
+              <button
+                onClick={closeModal}
+                className="p-2 text-gray-400 hover:text-white hover:bg-red-500/20 rounded-full transition-all duration-300 hover:rotate-90"
+              >
+                <X size={24} />
+              </button>
+            </div>
 
-              <div className="relative w-full h-[60vh] mb-6">
-                <motion.img
+            {/* Modal Content */}
+            <div className="p-6">
+              {/* Main Image */}
+              <div className="relative h-[60vh] mb-6 bg-gradient-to-br from-gray-800 to-gray-900 rounded-xl overflow-hidden">
+                <img
                   key={project.images[selectedImageIndex]}
-                  initial={{ opacity: 0, x: 100 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: -100 }}
-                  transition={{ duration: 0.2 }}
                   src={project.images[selectedImageIndex]}
-                  alt={`Image ${selectedImageIndex + 1}`}
-                  className="w-full h-full object-contain rounded-xl shadow-lg"
+                  alt={`${project.name} - Image ${selectedImageIndex + 1}`}
+                  className="w-full h-full object-contain transition-opacity duration-300"
                 />
 
+                {/* Navigation Arrows */}
                 {project.images.length > 1 && (
                   <>
-                    <button 
+                    <button
                       onClick={() => navigateImage('prev')}
-                      className="absolute left-0 top-1/2 -translate-y-1/2 bg-white/20 hover:bg-white/40 rounded-full p-2 m-2 transition"
-                      style={{ zIndex: 10001 }}
+                      className="absolute left-4 top-1/2 -translate-y-1/2 p-3 bg-black/60 hover:bg-[#16f2b3]/80 text-white hover:text-black rounded-full transition-all duration-300 hover:scale-110"
                     >
-                      <ChevronLeft size={32} color="white" />
+                      <ChevronLeft size={24} />
                     </button>
-                    <button 
+                    <button
                       onClick={() => navigateImage('next')}
-                      className="absolute right-0 top-1/2 -translate-y-1/2 bg-white/20 hover:bg-white/40 rounded-full p-2 m-2 transition"
-                      style={{ zIndex: 10001 }}
+                      className="absolute right-4 top-1/2 -translate-y-1/2 p-3 bg-black/60 hover:bg-[#16f2b3]/80 text-white hover:text-black rounded-full transition-all duration-300 hover:scale-110"
                     >
-                      <ChevronRight size={32} color="white" />
+                      <ChevronRight size={24} />
                     </button>
                   </>
                 )}
+
+                {/* Image Counter */}
+                <div className="absolute bottom-4 left-1/2 -translate-x-1/2 px-4 py-2 bg-black/60 text-white rounded-full text-sm">
+                  {selectedImageIndex + 1} / {project.images.length}
+                </div>
               </div>
 
-              <div className="grid grid-cols-5 md:grid-cols-7 lg:grid-cols-9 gap-2 overflow-x-auto">
-                {project.images.map((src, index) => (
-                  <motion.div
-                    key={index}
-                    whileHover={{ scale: 1.1 }}
-                    whileTap={{ scale: 0.95 }}
-                    className={`cursor-pointer transition-all duration-300 rounded-lg 
-                      ${index === selectedImageIndex 
-                        ? 'border-2 border-[#16f2b3] opacity-100' 
-                        : 'opacity-60 hover:opacity-100'}`}
-                    onClick={() => setSelectedImageIndex(index)}
-                  >
-                    <img
-                      src={src}
-                      alt={`Miniature ${index + 1}`}
-                      className="w-full h-16 md:h-20 object-cover rounded-lg"
-                    />
-                  </motion.div>
-                ))}
+              {/* Thumbnails */}
+              <div className="flex justify-center">
+                <div className="flex space-x-2 overflow-x-auto pb-2 max-w-full">
+                  {project.images.map((src, index) => (
+                    <button
+                      key={index}
+                      className={`flex-shrink-0 w-20 h-16 rounded-lg overflow-hidden border-2 transition-all duration-300 hover:scale-110 ${index === selectedImageIndex
+                          ? 'border-[#16f2b3] shadow-lg shadow-[#16f2b3]/30'
+                          : 'border-gray-600 hover:border-gray-400'
+                        }`}
+                      onClick={() => setSelectedImageIndex(index)}
+                    >
+                      <img
+                        src={src}
+                        alt={`Miniature ${index + 1}`}
+                        className="w-full h-full object-cover"
+                      />
+                    </button>
+                  ))}
+                </div>
               </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </div>
+
+              {/* Project Description */}
+              <div className="mt-6 p-4 bg-[#0a0d37]/50 rounded-xl border border-indigo-900/50">
+                <p className="text-gray-300 text-sm leading-relaxed">
+                  {project.description}
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <style jsx>{`
+        @keyframes fadeIn {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+        @keyframes slideInUp {
+          from { 
+            opacity: 0; 
+            transform: translateY(50px) scale(0.9); 
+          }
+          to { 
+            opacity: 1; 
+            transform: translateY(0) scale(1); 
+          }
+        }
+        .animate-fadeIn {
+          animation: fadeIn 0.3s ease-out;
+        }
+        .animate-slideInUp {
+          animation: slideInUp 0.4s ease-out;
+        }
+      `}</style>
+    </>
   );
 }
 

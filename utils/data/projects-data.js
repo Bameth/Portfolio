@@ -1,12 +1,13 @@
 export const projectsData = [
     {
         id: 1,
-        name: 'SenTerrain - Plateforme de location de terrains',
-        description: "Développement d'une application web pour la location de terrains à Dakar.Ce projet inclut la gestion des utilisateurs avec IdentityUser, l'intégration de rôles (admin, gestionnaire, client), et la réservation exclusive pour les clients. J'ai utilisé C# pour le backend et intégré la solution de paiement PayTech. Le frontend est conçu avec Tailwind CSS et JavaScript. En parallèle, j'ai mis en place des fixtures pour peupler la base de données, intégré Twilio pour la gestion des SMS, et implémenté l'envoi d'emails. Le projet est actuellement en cours de développement.",
-        tools: ['C#', 'ASP.NET Core', 'Identity Framework', 'Tailwind CSS', 'JavaScript', 'PayTech API', 'Twilio API', 'Entity Framework Core', 'PostgreSQL'],
+        name: 'SunuTerrain - Plateforme de réservation de terrains',
+        description: "Développement d'une application web pour la réservation de terrains à Dakar. Ce projet inclut la gestion des utilisateurs avec IdentityUser, l'intégration de rôles (admin, gestionnaire, client), et la réservation exclusive pour les clients. J'ai utilisé C# pour le backend et intégré la solution de paiement Wave. Le frontend est conçu avec Tailwind CSS et JavaScript. En parallèle, j'ai  intégré Twilio et OrangeSms pour la gestion des SMS, et implémenté l'envoi d'emails. Le projet est actuellement déployé.",
+        tools: ['C#', 'ASP.NET Core', 'Identity Framework', 'Tailwind CSS', 'JavaScript', 'Wave API', 'Twilio API', 'OrangeSms API', 'Entity Framework Core', 'PostgreSQL', 'Nginx', 'Cloudinary'],
         role: 'Full Stack Developer',
-        code: 'https://github.com/user/SenTerrain',
-        demo: '',
+        code: 'https://github.com/user/SunuTerrain',
+        demo: 'https://sunuterrain.com/',
+        status: "Déployé",
         images: [
             '/imageges/home.gif',
             '/imageges/login.jpeg',
@@ -37,6 +38,7 @@ export const projectsData = [
         role: 'Full Stack Developer',
         code: '',
         demo: '',
+        status: "Développement",
         images: [
             '/image/home.jpeg',
             '/image/login.jpeg',
@@ -67,11 +69,12 @@ export const projectsData = [
     {
         id: 3,
         name: 'Gestion de dettes pour une boutique',
-        description: "Ce projet est une application Symfony sur WSL(Windows Subsystem for Linux) dédiée à la gestion des dettes d’une boutique, comprenant deux versions : une version avec Twig pour le rendu des vues côté serveur, et une version monolithique distribuée intégrant JavaScript avec une communication via Ajax pour une gestion dynamique et rapide des dettes et la mis en place des fixtures pour remplir la BD. L’application permet de suivre les dettes des clients, gérer les paiements, et consulter l’historique des transactions. Elle offre des interfaces adaptées aux rôles du boutiquier, de l’administrateur et des clients, avec des fonctionnalités de gestion et de suivi en temps réel.",
+        description: "Ce projet est une application Symfony sur WSL(Windows Subsystem for Linux) dédiée à la gestion des dettes d'une boutique, comprenant deux versions : une version avec Twig pour le rendu des vues côté serveur, et une version monolithique distribuée intégrant JavaScript avec une communication via Ajax pour une gestion dynamique et rapide des dettes et la mis en place des fixtures pour remplir la BD. L'application permet de suivre les dettes des clients, gérer les paiements, et consulter l'historique des transactions. Elle offre des interfaces adaptées aux rôles du boutiquier, de l'administrateur et des clients, avec des fonctionnalités de gestion et de suivi en temps réel.",
         tools: ['Symfony', 'Postgres', 'UML Diagrams', 'Twig', 'Tailwind CSS', 'JavaScript', 'HTML', 'WSL'],
         role: 'Full Stack Developer',
         code: '',
         demo: '',
+        status: "Développement",
         images: [
             '/imageges/listeclient.jpeg',
             '/imageges/listeclientJS.jpeg',
@@ -91,6 +94,7 @@ export const projectsData = [
         role: 'Full Stack Developer',
         code: '',
         demo: '',
+        status: "Développement",
         images: [
             '/image/catalogue.jpeg',
             '/image/panierAngular.jpeg',
@@ -100,11 +104,12 @@ export const projectsData = [
     {
         id: 5,
         name: 'Gestion Atelier Couture',
-        description: "Ce projet est une application web from-scratch développée en PHP pour gérer les activités d’un atelier de couture, notamment le stock (approvisionnements, articles, fournisseurs), la production (suivi des productions) et la vente (gestion des ventes et clients), avec des rôles spécifiques (Gestionnaire, Responsable de Stock, Responsable de Production, Vendeur) et une authentification sécurisée.",
+        description: "Ce projet est une application web from-scratch développée en PHP pour gérer les activités d'un atelier de couture, notamment le stock (approvisionnements, articles, fournisseurs), la production (suivi des productions) et la vente (gestion des ventes et clients), avec des rôles spécifiques (Gestionnaire, Responsable de Stock, Responsable de Production, Vendeur) et une authentification sécurisée.",
         tools: ['PHP', 'MYSQL', 'JavaScript', 'Tailwind CSS', 'Composer', 'PhpMyAdmin'],
         role: 'Full Stack Developer',
         code: '',
         demo: '',
+        status: "Développement",
         images: [
             '/image/welcome.gif',
             '/image/listearticle.jpeg',
@@ -126,6 +131,7 @@ export const projectsData = [
         role: 'Full Stack Developer',
         code: '',
         demo: '',
+        status: "Développement",
         images: [
             '/imagesfx/connexion.png',
             '/imagesfx/listeart.png',
@@ -142,18 +148,3 @@ export const projectsData = [
         ],
     },
 ];
-
-
-
-// Do not remove any property.
-// Leave it blank instead as shown below
-
-// {
-//     id: 1,
-//     name: '',
-//     description: "",
-//     tools: [],
-//     role: '',
-//     code: '',
-//     demo: '',
-// },
