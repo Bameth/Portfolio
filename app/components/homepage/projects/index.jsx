@@ -115,7 +115,7 @@ const Projects = () => {
         {/* Call to Action */}
         <div className="mt-16 text-center animate-fadeInUp" style={{ animationDelay: '1.8s' }}>
           <p className="text-gray-400 text-lg mb-6 max-w-2xl mx-auto">
-            Chaque projet est une nouvelle opportunité d'innover et de créer des solutions impactantes.
+            Chaque projet est une nouvelle opportunité d&apos;innover et de créer des solutions impactantes.
             Explorons ensemble votre prochain défi !
           </p>
 

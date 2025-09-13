@@ -129,7 +129,7 @@ function ProjectCard({ project, index }) {
 
               <div className="ml-4">
                 <span className="text-white">role:</span>
-                <span className="text-orange-400 ml-1">"{project.role}"</span>
+                <span className="text-orange-400 ml-1">{`"${project.role}"`}</span>
                 <span className="text-gray-400">,</span>
               </div>
 
@@ -210,7 +210,7 @@ function ProjectCard({ project, index }) {
                 <img
                   key={project.images[selectedImageIndex]}
                   src={project.images[selectedImageIndex]}
-                  alt={`${project.name} - Image ${selectedImageIndex + 1}`}
+                  alt={`${project.name.replace(/"/g, '&quot;')} - Image ${selectedImageIndex + 1}`}
                   className="w-full h-full object-contain transition-opacity duration-300"
                 />
 
@@ -245,8 +245,8 @@ function ProjectCard({ project, index }) {
                     <button
                       key={index}
                       className={`flex-shrink-0 w-20 h-16 rounded-lg overflow-hidden border-2 transition-all duration-300 hover:scale-110 ${index === selectedImageIndex
-                          ? 'border-[#16f2b3] shadow-lg shadow-[#16f2b3]/30'
-                          : 'border-gray-600 hover:border-gray-400'
+                        ? 'border-[#16f2b3] shadow-lg shadow-[#16f2b3]/30'
+                        : 'border-gray-600 hover:border-gray-400'
                         }`}
                       onClick={() => setSelectedImageIndex(index)}
                     >
