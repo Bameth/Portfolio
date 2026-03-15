@@ -100,7 +100,9 @@ function LazyImage({ src, alt, objectFit = "cover", fadeKey }) {
           <span style={{ color: "#334155", fontSize: "2rem" }}>⚠</span>
         </div>
       )}
-      {/* Image */}
+      {/* Image — eslint-disable-next-line @next/next/no-img-element */}
+      {/* Using <img> intentionally here: we manage load state manually via new window.Image() */}
+      {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         src={src}
         alt={alt ?? ""}

@@ -81,9 +81,9 @@ function ContactSection() {
               <div className="absolute inset-0 bg-gradient-to-br from-[#16f2b3]/3 to-transparent pointer-events-none" />
               <div className="h-px w-full bg-gradient-to-r from-transparent via-[#16f2b3]/30 to-transparent mb-5" />
               <p className="text-slate-400 text-sm leading-relaxed">
-                Disponible pour tout projet ambitieux — qu'il s'agisse d'une
-                application web, d'une API ou d'un produit complet. Réponse
-                garantie sous 24h.
+                Disponible pour tout projet ambitieux &mdash; qu&apos;il
+                s&apos;agisse d&apos;une application web, d&apos;une API ou
+                d&apos;un produit complet. Réponse garantie sous 24h.
               </p>
             </div>
 
