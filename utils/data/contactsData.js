@@ -1,6 +1,6 @@
 export const contactsData = {
     email: 'amethba8826@gmail.com',
-    phone: '+221781069049',
+    phone: '',
     address: 'Dakar, Senegal',
     github: 'https://github.com/Bameth',
     facebook: '',

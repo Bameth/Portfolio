@@ -1,168 +1,272 @@
 "use client";
-import React, { useState, useEffect } from 'react';
-import { ChevronLeft, ChevronRight, X, Eye, Github, ExternalLink } from 'lucide-react';
+import React, { useState, useEffect, useCallback } from "react";
+import {
+  Github,
+  ExternalLink,
+  X,
+  ChevronLeft,
+  ChevronRight,
+  Eye,
+} from "lucide-react";
 
-function ProjectCard({ project, index }) {
-  const [showModal, setShowModal] = useState(false);
-  const [selectedImageIndex, setSelectedImageIndex] = useState(0);
-  const [isLoaded, setIsLoaded] = useState(false);
+const STATUS_CONFIG = {
+  Déployé: {
+    label: "Live",
+    dot: "#16f2b3",
+    pill: "rgba(22,242,179,0.1)",
+    text: "#16f2b3",
+    border: "rgba(22,242,179,0.25)",
+  },
+  Développement: {
+    label: "En cours",
+    dot: "#60a5fa",
+    pill: "rgba(96,165,250,0.1)",
+    text: "#60a5fa",
+    border: "rgba(96,165,250,0.25)",
+  },
+  Terminé: {
+    label: "Terminé",
+    dot: "#a78bfa",
+    pill: "rgba(167,139,250,0.1)",
+    text: "#a78bfa",
+    border: "rgba(167,139,250,0.25)",
+  },
+};
+
+function getStatus(s) {
+  return (
+    STATUS_CONFIG[s] ?? {
+      label: s,
+      dot: "#94a3b8",
+      pill: "rgba(148,163,184,0.1)",
+      text: "#94a3b8",
+      border: "rgba(148,163,184,0.25)",
+    }
+  );
+}
+
+function getPreviewImage(images) {
+  if (!images?.length) return null;
+  return images.find((src) => !src.toLowerCase().endsWith(".gif")) ?? images[0];
+}
+
+/* ─── Lazy image with skeleton shimmer ─── */
+function LazyImage({ src, alt, objectFit = "cover", fadeKey }) {
+  const [state, setState] = useState("loading"); // loading | loaded | error
 
   useEffect(() => {
-    project.images.forEach((src) => {
-      const img = new Image();
-      img.src = src;
-    });
-    setIsLoaded(true);
-  }, [project.images]);
+    if (!src) {
+      setState("error");
+      return;
+    }
+    setState("loading");
+    const img = new window.Image();
+    img.src = src;
+    img.onload = () => setState("loaded");
+    img.onerror = () => setState("error");
+    return () => {
+      img.onload = null;
+      img.onerror = null;
+    };
+  }, [src, fadeKey]);
 
-  const openModal = (imageIndex = 0) => {
-    setSelectedImageIndex(imageIndex);
-    setShowModal(true);
-    document.body.style.overflow = 'hidden';
-  };
+  return (
+    <div style={{ position: "absolute", inset: 0, overflow: "hidden" }}>
+      {/* Shimmer skeleton */}
+      {state === "loading" && (
+        <div
+          style={{
+            position: "absolute",
+            inset: 0,
+            background:
+              "linear-gradient(90deg, #0d1224 25%, #151f40 50%, #0d1224 75%)",
+            backgroundSize: "200% 100%",
+            animation: "lazy-shimmer 1.5s infinite",
+          }}
+        />
+      )}
+      {/* Error */}
+      {state === "error" && (
+        <div
+          style={{
+            position: "absolute",
+            inset: 0,
+            background: "#080b1e",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          <span style={{ color: "#334155", fontSize: "2rem" }}>⚠</span>
+        </div>
+      )}
+      {/* Image */}
+      <img
+        src={src}
+        alt={alt ?? ""}
+        style={{
+          position: "absolute",
+          inset: 0,
+          width: "100%",
+          height: "100%",
+          objectFit,
+          opacity: state === "loaded" ? 1 : 0,
+          transition: "opacity 0.35s ease",
+        }}
+      />
+    </div>
+  );
+}
 
-  const closeModal = () => {
-    setShowModal(false);
-    setSelectedImageIndex(0);
-    document.body.style.overflow = 'unset';
-  };
+/* ─── Card ─── */
+function ProjectCard({ project, index, featured = false }) {
+  const [modalOpen, setModalOpen] = useState(false);
+  const [imgIdx, setImgIdx] = useState(0);
 
-  const navigateImage = (direction) => {
-    const totalImages = project.images.length;
-    setSelectedImageIndex((prevIndex) => {
-      if (direction === 'next') {
-        return (prevIndex + 1) % totalImages;
-      } else {
-        return (prevIndex - 1 + totalImages) % totalImages;
-      }
-    });
-  };
+  const statusCfg = getStatus(project.status);
+  const num = String(index + 1).padStart(2, "0");
+  const previewSrc = getPreviewImage(project.images);
+  const maxTools = featured ? 6 : 4;
+
+  const open = useCallback(() => {
+    setImgIdx(0);
+    setModalOpen(true);
+    document.body.style.overflow = "hidden";
+  }, []);
+  const close = useCallback(() => {
+    setModalOpen(false);
+    document.body.style.overflow = "";
+  }, []);
+  const prev = useCallback(
+    (e) => {
+      e?.stopPropagation();
+      setImgIdx((i) => (i - 1 + project.images.length) % project.images.length);
+    },
+    [project.images.length],
+  );
+  const next = useCallback(
+    (e) => {
+      e?.stopPropagation();
+      setImgIdx((i) => (i + 1) % project.images.length);
+    },
+    [project.images.length],
+  );
+
+  useEffect(() => {
+    if (!modalOpen) return;
+    const h = (e) => {
+      if (e.key === "Escape") close();
+      if (e.key === "ArrowLeft") prev();
+      if (e.key === "ArrowRight") next();
+    };
+    window.addEventListener("keydown", h);
+    return () => window.removeEventListener("keydown", h);
+  }, [modalOpen, close, prev, next]);
 
   return (
     <>
+      {/* ── CARD ── */}
       <div
-        className={`group relative bg-gradient-to-br from-[#0d1224] via-[#1a1443] to-[#0a0d37] border border-[#1b2c68a0] rounded-2xl overflow-hidden shadow-xl hover:shadow-2xl hover:shadow-purple-500/10 transition-all duration-500 hover:-translate-y-2 ${isLoaded ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
-          }`}
-        style={{
-          transitionDelay: `${index * 0.1}s`
-        }}
+        className={`pc-card group relative flex flex-col bg-gradient-to-br from-[#0d1224] to-[#0a0d37] border border-[#1b2c68]/60 rounded-2xl overflow-hidden transition-all duration-500 hover:-translate-y-1 hover:border-[#16f2b3]/30 hover:shadow-2xl hover:shadow-[#16f2b3]/5 ${featured ? "md:col-span-2" : ""}`}
+        style={{ "--i": index }}
       >
-        {/* Animated border effect */}
-        <div className="absolute inset-0 rounded-2xl bg-gradient-to-r from-transparent via-[#16f2b3]/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 blur-sm" />
-
-        {/* Header with terminal dots */}
-        <div className="relative">
-          <div className="flex flex-row">
-            <div className="h-[1px] w-full bg-gradient-to-r from-transparent via-pink-500 to-violet-600"></div>
-            <div className="h-[1px] w-full bg-gradient-to-r from-violet-600 to-transparent"></div>
-          </div>
-          <div className="px-6 py-4 relative">
-            <div className="flex flex-row space-x-2 absolute top-1/2 -translate-y-1/2">
-              <div className="h-3 w-3 rounded-full bg-red-400 animate-pulse" />
-              <div className="h-3 w-3 rounded-full bg-orange-400 animate-pulse" style={{ animationDelay: '0.2s' }} />
-              <div className="h-3 w-3 rounded-full bg-green-400 animate-pulse" style={{ animationDelay: '0.4s' }} />
-            </div>
-            <p className="text-center text-[#16f2b3] text-lg font-semibold truncate ml-16">
-              {project.name}
-            </p>
-          </div>
+        <div className="flex flex-shrink-0">
+          <div className="h-[1px] w-full bg-gradient-to-r from-transparent via-pink-500 to-violet-600" />
+          <div className="h-[1px] w-full bg-gradient-to-r from-violet-600 to-transparent" />
         </div>
 
-        {/* Image preview */}
-        <div className="px-6 mb-4">
-          <div
-            className="relative h-40 bg-gradient-to-br from-gray-800 to-gray-900 rounded-xl overflow-hidden cursor-pointer group/image hover:scale-105 transition-transform duration-300"
-            onClick={() => openModal(0)}
+        <div className="flex items-center gap-3 px-5 py-3 border-b border-[#1b2c68]/40 flex-shrink-0">
+          <div className="flex gap-1.5">
+            <span className="w-2.5 h-2.5 rounded-full bg-red-400" />
+            <span className="w-2.5 h-2.5 rounded-full bg-amber-400" />
+            <span className="w-2.5 h-2.5 rounded-full bg-green-400" />
+          </div>
+          <span className="ml-auto text-[10px] font-black text-slate-600 tracking-widest">
+            {num}
+          </span>
+          <span
+            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-[10px] font-bold uppercase tracking-wide"
+            style={{
+              background: statusCfg.pill,
+              color: statusCfg.text,
+              borderColor: statusCfg.border,
+            }}
           >
-            <img
-              src={project.images[0]}
-              alt={project.name}
-              className="w-full h-full object-cover transition-transform duration-700 group-hover/image:scale-110"
+            <span
+              className="w-1.5 h-1.5 rounded-full animate-pulse"
+              style={{ background: statusCfg.dot }}
             />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover/image:opacity-100 transition-opacity duration-300" />
+            {statusCfg.label}
+          </span>
+        </div>
 
-            {/* View gallery button */}
-            <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover/image:opacity-100 transition-all duration-300">
-              <button className="flex items-center space-x-2 px-4 py-2 bg-[#16f2b3]/90 text-black rounded-lg font-medium hover:bg-[#16f2b3] transition-colors duration-200 transform hover:scale-105">
-                <Eye size={16} />
-                <span className="text-sm">Voir Images</span>
-              </button>
+        {/* Preview */}
+        <div
+          className="relative cursor-pointer flex-shrink-0 overflow-hidden"
+          style={{ aspectRatio: "16/9" }}
+          onClick={open}
+          role="button"
+          tabIndex={0}
+          onKeyDown={(e) => e.key === "Enter" && open()}
+        >
+          {previewSrc ? (
+            <LazyImage src={previewSrc} alt={project.name} objectFit="cover" />
+          ) : (
+            <div className="absolute inset-0 bg-[#080b1e] flex items-center justify-center">
+              <span className="text-slate-700 text-5xl font-black">{num}</span>
             </div>
-
-            {/* Image counter */}
+          )}
+          <div className="absolute inset-0 bg-gradient-to-t from-[#0a0d37]/95 via-[#0a0d37]/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end p-4 gap-2">
+            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#16f2b3] text-black text-xs font-bold rounded-lg shadow-lg">
+              <Eye size={12} /> Voir la galerie
+            </span>
             {project.images.length > 1 && (
-              <div className="absolute top-3 right-3 px-2 py-1 bg-black/60 text-white text-xs rounded-full">
+              <span className="inline-flex items-center px-2.5 py-1.5 bg-black/60 text-white/70 text-[10px] font-bold rounded-lg border border-white/10">
                 {project.images.length} photos
-              </div>
+              </span>
             )}
           </div>
         </div>
 
-        {/* Code-style content */}
-        <div className="px-6 pb-6">
-          <div className="bg-[#0a0d37]/50 border border-indigo-900/50 rounded-xl p-4 font-mono text-sm">
-            <div className="space-y-1">
-              <div>
-                <span className="text-pink-500">const</span>
-                <span className="text-white ml-2">project</span>
-                <span className="text-pink-500 ml-2">=</span>
-                <span className="text-gray-400 ml-2">{'{'}</span>
-              </div>
-
-              <div className="ml-4">
-                <span className="text-white">tools:</span>
-                <span className="text-gray-400 ml-1">[</span>
-                <div className="ml-4 flex flex-wrap gap-1 mt-1">
-                  {project.tools.slice(0, 4).map((tool, i) => (
-                    <span key={i} className="px-2 py-1 bg-amber-500/20 text-amber-300 rounded text-xs border border-amber-500/30 hover:bg-amber-500/30 hover:scale-105 transition-all duration-200">
-                      {tool}
-                    </span>
-                  ))}
-                  {project.tools.length > 4 && (
-                    <span className="px-2 py-1 bg-purple-500/20 text-purple-300 rounded text-xs border border-purple-500/30 hover:bg-purple-500/30 transition-all duration-200">
-                      +{project.tools.length - 4}
-                    </span>
-                  )}
-                </div>
-                <span className="text-gray-400">],</span>
-              </div>
-
-              <div className="ml-4">
-                <span className="text-white">role:</span>
-                <span className="text-orange-400 ml-1">{`"${project.role}"`}</span>
-                <span className="text-gray-400">,</span>
-              </div>
-
-              <div className="ml-4">
-                <span className="text-white">status:</span>
-                <span className="text-cyan-400 ml-1">{project.status}</span>
-              </div>
-
-              <div>
-                <span className="text-gray-400">{'};'}</span>
-              </div>
-            </div>
+        <div className="flex flex-col flex-1 p-5 gap-3">
+          <h3 className="text-sm font-bold text-slate-100 leading-snug line-clamp-2 tracking-tight">
+            {project.name}
+          </h3>
+          <div className="flex flex-wrap gap-1.5">
+            {project.tools.slice(0, maxTools).map((t) => (
+              <span
+                key={t}
+                className="px-2 py-0.5 text-[10px] font-medium rounded-md bg-[#1b2c68]/50 text-slate-400 border border-[#1b2c68]/60 group-hover:border-[#16f2b3]/20 group-hover:text-[#16f2b3]/70 transition-colors duration-300"
+              >
+                {t}
+              </span>
+            ))}
+            {project.tools.length > maxTools && (
+              <span className="px-2 py-0.5 text-[10px] font-medium rounded-md bg-violet-500/10 text-violet-400 border border-violet-500/20">
+                +{project.tools.length - maxTools}
+              </span>
+            )}
           </div>
-
-          {/* Action buttons */}
-          <div className="flex items-center justify-between mt-4">
+          <p className="text-[10px] text-slate-600 uppercase tracking-widest font-semibold mt-auto pt-1">
+            {project.role}
+          </p>
+          <div className="flex items-center justify-between pt-3 border-t border-[#1b2c68]/40">
             <button
-              onClick={() => openModal(0)}
-              className="flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-[#1b2c68] to-[#3b4a9e] text-white rounded-lg hover:from-[#3b4a9e] hover:to-[#1b2c68] transition-all duration-300 hover:scale-105 shadow-lg"
+              onClick={open}
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-[#1b2c68]/50 hover:bg-[#16f2b3]/10 border border-[#1b2c68]/60 hover:border-[#16f2b3]/30 text-slate-400 hover:text-[#16f2b3] rounded-lg text-xs font-semibold transition-all duration-200"
             >
-              <Eye size={16} />
-              <span className="text-sm">Galerie</span>
+              <Eye size={13} /> Galerie
             </button>
-
-            <div className="flex space-x-2">
+            <div className="flex gap-2">
               {project.code && (
                 <a
                   href={project.code}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="p-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-all duration-300 hover:scale-110 hover:rotate-12"
+                  className="flex items-center justify-center w-8 h-8 rounded-lg bg-[#1b2c68]/40 hover:bg-slate-700/50 border border-[#1b2c68]/60 hover:border-slate-500/60 text-slate-400 hover:text-white transition-all duration-200"
+                  aria-label="Code"
                 >
-                  <Github size={16} />
+                  <Github size={14} />
                 </a>
               )}
               {project.demo && (
@@ -170,9 +274,10 @@ function ProjectCard({ project, index }) {
                   href={project.demo}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="p-2 bg-[#16f2b3] hover:bg-[#14d9a5] text-black rounded-lg transition-all duration-300 hover:scale-110 hover:rotate-12"
+                  className="flex items-center justify-center w-8 h-8 rounded-lg bg-[#16f2b3]/10 hover:bg-[#16f2b3]/20 border border-[#16f2b3]/25 hover:border-[#16f2b3]/50 text-[#16f2b3] transition-all duration-200"
+                  aria-label="Démo"
                 >
-                  <ExternalLink size={16} />
+                  <ExternalLink size={14} />
                 </a>
               )}
             </div>
@@ -180,91 +285,170 @@ function ProjectCard({ project, index }) {
         </div>
       </div>
 
-      {/* Modal Gallery */}
-      {showModal && (
+      {/* ── MODAL ── */}
+      {modalOpen && (
         <div
-          className="fixed inset-0 bg-black/90 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fadeIn"
-          onClick={closeModal}
+          className="pm-backdrop"
+          onClick={close}
+          role="dialog"
+          aria-modal="true"
         >
-          <div
-            className="bg-[#0d1224] rounded-2xl border border-[#1b2c68a0] shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden animate-slideInUp"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* Modal Header */}
-            <div className="flex items-center justify-between p-6 border-b border-[#1b2c68a0]">
-              <h3 className="text-2xl font-bold text-[#16f2b3]">
-                {project.name} - Galerie
-              </h3>
-              <button
-                onClick={closeModal}
-                className="p-2 text-gray-400 hover:text-white hover:bg-red-500/20 rounded-full transition-all duration-300 hover:rotate-90"
-              >
-                <X size={24} />
-              </button>
-            </div>
-
-            {/* Modal Content */}
-            <div className="p-6">
-              {/* Main Image */}
-              <div className="relative h-[60vh] mb-6 bg-gradient-to-br from-gray-800 to-gray-900 rounded-xl overflow-hidden">
-                <img
-                  key={project.images[selectedImageIndex]}
-                  src={project.images[selectedImageIndex]}
-                  alt={`${project.name.replace(/"/g, '&quot;')} - Image ${selectedImageIndex + 1}`}
-                  className="w-full h-full object-contain transition-opacity duration-300"
+          <div className="pm-shell" onClick={(e) => e.stopPropagation()}>
+            {/* LEFT — gallery */}
+            <div className="pm-gallery">
+              <div className="pm-viewer">
+                <LazyImage
+                  key={imgIdx}
+                  src={project.images[imgIdx]}
+                  alt={`${project.name} ${imgIdx + 1}`}
+                  objectFit="contain"
+                  fadeKey={imgIdx}
                 />
-
-                {/* Navigation Arrows */}
                 {project.images.length > 1 && (
                   <>
                     <button
-                      onClick={() => navigateImage('prev')}
-                      className="absolute left-4 top-1/2 -translate-y-1/2 p-3 bg-black/60 hover:bg-[#16f2b3]/80 text-white hover:text-black rounded-full transition-all duration-300 hover:scale-110"
+                      className="pm-nav pm-nav-l"
+                      onClick={prev}
+                      aria-label="Précédent"
                     >
-                      <ChevronLeft size={24} />
+                      <ChevronLeft size={20} />
                     </button>
                     <button
-                      onClick={() => navigateImage('next')}
-                      className="absolute right-4 top-1/2 -translate-y-1/2 p-3 bg-black/60 hover:bg-[#16f2b3]/80 text-white hover:text-black rounded-full transition-all duration-300 hover:scale-110"
+                      className="pm-nav pm-nav-r"
+                      onClick={next}
+                      aria-label="Suivant"
                     >
-                      <ChevronRight size={24} />
+                      <ChevronRight size={20} />
                     </button>
+                    <div className="pm-pips">
+                      {project.images.map((_, i) => (
+                        <button
+                          key={i}
+                          className={`pm-pip ${i === imgIdx ? "pm-pip-on" : ""}`}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setImgIdx(i);
+                          }}
+                          aria-label={`Image ${i + 1}`}
+                        />
+                      ))}
+                    </div>
+                    <span className="pm-counter">
+                      {imgIdx + 1} / {project.images.length}
+                    </span>
                   </>
                 )}
-
-                {/* Image Counter */}
-                <div className="absolute bottom-4 left-1/2 -translate-x-1/2 px-4 py-2 bg-black/60 text-white rounded-full text-sm">
-                  {selectedImageIndex + 1} / {project.images.length}
-                </div>
               </div>
 
-              {/* Thumbnails */}
-              <div className="flex justify-center">
-                <div className="flex space-x-2 overflow-x-auto pb-2 max-w-full">
-                  {project.images.map((src, index) => (
+              {project.images.length > 1 && (
+                <div className="pm-thumbs">
+                  {project.images.map((src, i) => (
                     <button
-                      key={index}
-                      className={`flex-shrink-0 w-20 h-16 rounded-lg overflow-hidden border-2 transition-all duration-300 hover:scale-110 ${index === selectedImageIndex
-                        ? 'border-[#16f2b3] shadow-lg shadow-[#16f2b3]/30'
-                        : 'border-gray-600 hover:border-gray-400'
-                        }`}
-                      onClick={() => setSelectedImageIndex(index)}
+                      key={i}
+                      className={`pm-thumb ${i === imgIdx ? "pm-thumb-on" : ""}`}
+                      onClick={() => setImgIdx(i)}
+                      aria-label={`Image ${i + 1}`}
                     >
-                      <img
-                        src={src}
-                        alt={`Miniature ${index + 1}`}
-                        className="w-full h-full object-cover"
-                      />
+                      <LazyImage src={src} alt="" objectFit="cover" />
                     </button>
                   ))}
                 </div>
+              )}
+            </div>
+
+            {/* RIGHT — info */}
+            <div className="pm-info">
+              <div className="pm-info-head">
+                <div className="min-w-0 flex-1">
+                  <p className="pm-eyebrow">Projet {num}</p>
+                  <h2 className="pm-title">{project.name}</h2>
+                </div>
+                <button
+                  className="pm-close"
+                  onClick={close}
+                  aria-label="Fermer"
+                >
+                  <X size={16} />
+                </button>
               </div>
 
-              {/* Project Description */}
-              <div className="mt-6 p-4 bg-[#0a0d37]/50 rounded-xl border border-indigo-900/50">
-                <p className="text-gray-300 text-sm leading-relaxed">
-                  {project.description}
-                </p>
+              <div className="pm-info-body">
+                <div className="flex flex-wrap gap-2 mb-5">
+                  <span
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs font-bold"
+                    style={{
+                      background: statusCfg.pill,
+                      color: statusCfg.text,
+                      borderColor: statusCfg.border,
+                    }}
+                  >
+                    <span
+                      className="w-1.5 h-1.5 rounded-full animate-pulse"
+                      style={{ background: statusCfg.dot }}
+                    />
+                    {statusCfg.label}
+                  </span>
+                  <span className="inline-flex items-center px-3 py-1.5 rounded-full border border-[#1b2c68]/60 bg-[#1b2c68]/20 text-slate-400 text-xs font-medium">
+                    {project.role}
+                  </span>
+                </div>
+
+                <p className="pm-desc">{project.description}</p>
+
+                <div className="pm-sep" />
+
+                <div className="pm-sec">
+                  <p className="pm-sec-label">Stack technique</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {project.tools.map((t) => (
+                      <span
+                        key={t}
+                        className="px-2.5 py-1 text-xs font-medium rounded-md bg-[#1b2c68]/40 text-slate-400 border border-[#1b2c68]/50 hover:border-[#16f2b3]/30 hover:text-[#16f2b3]/80 transition-colors duration-200"
+                      >
+                        {t}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+
+                {(project.code || project.demo) && (
+                  <>
+                    <div className="pm-sep" />
+                    <div className="pm-sec">
+                      <p className="pm-sec-label">Liens</p>
+                      <div className="flex flex-col gap-2">
+                        {project.demo && (
+                          <a
+                            href={project.demo}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="pm-lbtn pm-lbtn-green"
+                          >
+                            <ExternalLink size={14} />
+                            <span>Voir le site en ligne</span>
+                            <span className="ml-auto opacity-40 text-[10px]">
+                              ↗
+                            </span>
+                          </a>
+                        )}
+                        {project.code && (
+                          <a
+                            href={project.code}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="pm-lbtn pm-lbtn-ghost"
+                          >
+                            <Github size={14} />
+                            <span>Voir le code source</span>
+                            <span className="ml-auto opacity-40 text-[10px]">
+                              ↗
+                            </span>
+                          </a>
+                        )}
+                      </div>
+                    </div>
+                  </>
+                )}
               </div>
             </div>
           </div>
@@ -272,25 +456,335 @@ function ProjectCard({ project, index }) {
       )}
 
       <style jsx>{`
-        @keyframes fadeIn {
-          from { opacity: 0; }
-          to { opacity: 1; }
+        /* card */
+        .pc-card {
+          opacity: 0;
+          transform: translateY(16px);
+          animation: cardIn 0.5s cubic-bezier(0.22, 1, 0.36, 1)
+            calc(var(--i, 0) * 80ms) forwards;
         }
-        @keyframes slideInUp {
-          from { 
-            opacity: 0; 
-            transform: translateY(50px) scale(0.9); 
+        @keyframes cardIn {
+          to {
+            opacity: 1;
+            transform: translateY(0);
           }
-          to { 
-            opacity: 1; 
-            transform: translateY(0) scale(1); 
+        }
+
+        /* backdrop */
+        .pm-backdrop {
+          position: fixed;
+          inset: 0;
+          background: rgba(2, 4, 14, 0.94);
+          backdrop-filter: blur(18px);
+          z-index: 9999;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          padding: 16px;
+          animation: bkIn 0.22s ease;
+        }
+        @keyframes bkIn {
+          from {
+            opacity: 0;
+          }
+          to {
+            opacity: 1;
           }
         }
-        .animate-fadeIn {
-          animation: fadeIn 0.3s ease-out;
+
+        /* shell */
+        .pm-shell {
+          display: flex;
+          width: 100%;
+          max-width: 1080px;
+          height: min(88vh, 660px);
+          background: #080c1e;
+          border: 1px solid rgba(27, 44, 104, 0.65);
+          border-radius: 22px;
+          overflow: hidden;
+          box-shadow:
+            0 40px 120px rgba(0, 0, 0, 0.75),
+            0 0 0 1px rgba(22, 242, 179, 0.05);
+          animation: shellIn 0.3s cubic-bezier(0.22, 1, 0.36, 1);
         }
-        .animate-slideInUp {
-          animation: slideInUp 0.4s ease-out;
+        @keyframes shellIn {
+          from {
+            opacity: 0;
+            transform: scale(0.93) translateY(22px);
+          }
+          to {
+            opacity: 1;
+            transform: scale(1) translateY(0);
+          }
+        }
+
+        /* gallery */
+        .pm-gallery {
+          flex: 1.35;
+          display: flex;
+          flex-direction: column;
+          border-right: 1px solid rgba(27, 44, 104, 0.5);
+          min-width: 0;
+        }
+        .pm-viewer {
+          position: relative;
+          flex: 1;
+          min-height: 0;
+          background: #040710;
+        }
+
+        /* nav buttons */
+        .pm-nav {
+          position: absolute;
+          top: 50%;
+          transform: translateY(-50%);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          width: 40px;
+          height: 40px;
+          border-radius: 50%;
+          background: rgba(0, 0, 0, 0.65);
+          border: 1px solid rgba(255, 255, 255, 0.08);
+          color: rgba(255, 255, 255, 0.75);
+          cursor: pointer;
+          transition: all 0.2s;
+          z-index: 2;
+        }
+        .pm-nav:hover {
+          background: rgba(22, 242, 179, 0.85);
+          color: #000;
+          border-color: transparent;
+          transform: translateY(-50%) scale(1.08);
+        }
+        .pm-nav-l {
+          left: 12px;
+        }
+        .pm-nav-r {
+          right: 12px;
+        }
+
+        /* pip dots */
+        .pm-pips {
+          position: absolute;
+          bottom: 12px;
+          left: 50%;
+          transform: translateX(-50%);
+          display: flex;
+          gap: 5px;
+          align-items: center;
+          z-index: 2;
+        }
+        .pm-pip {
+          width: 5px;
+          height: 5px;
+          border-radius: 50%;
+          background: rgba(255, 255, 255, 0.2);
+          border: none;
+          cursor: pointer;
+          padding: 0;
+          transition: all 0.2s;
+        }
+        .pm-pip:hover {
+          background: rgba(255, 255, 255, 0.5);
+        }
+        .pm-pip-on {
+          width: 18px;
+          border-radius: 3px;
+          background: #16f2b3;
+        }
+
+        .pm-counter {
+          position: absolute;
+          top: 12px;
+          right: 12px;
+          padding: 4px 10px;
+          background: rgba(0, 0, 0, 0.65);
+          color: rgba(255, 255, 255, 0.5);
+          font-size: 11px;
+          border-radius: 100px;
+          border: 1px solid rgba(255, 255, 255, 0.08);
+          z-index: 2;
+        }
+
+        /* thumbs */
+        .pm-thumbs {
+          display: flex;
+          gap: 6px;
+          padding: 10px 12px;
+          overflow-x: auto;
+          background: #060918;
+          border-top: 1px solid rgba(27, 44, 104, 0.4);
+          flex-shrink: 0;
+          scrollbar-width: thin;
+          scrollbar-color: rgba(22, 242, 179, 0.12) transparent;
+        }
+        .pm-thumb {
+          position: relative;
+          flex-shrink: 0;
+          width: 60px;
+          height: 42px;
+          border-radius: 7px;
+          overflow: hidden;
+          border: 2px solid transparent;
+          cursor: pointer;
+          padding: 0;
+          background: #0d1224;
+          transition:
+            border-color 0.2s,
+            transform 0.15s;
+        }
+        .pm-thumb:hover {
+          transform: scale(1.06);
+          border-color: rgba(22, 242, 179, 0.3);
+        }
+        .pm-thumb-on {
+          border-color: #16f2b3 !important;
+        }
+
+        /* info panel */
+        .pm-info {
+          width: 300px;
+          flex-shrink: 0;
+          display: flex;
+          flex-direction: column;
+          background: #080c1e;
+        }
+        .pm-info-head {
+          display: flex;
+          align-items: flex-start;
+          gap: 12px;
+          padding: 22px 18px 18px;
+          border-bottom: 1px solid rgba(27, 44, 104, 0.5);
+          flex-shrink: 0;
+        }
+        .pm-eyebrow {
+          font-size: 10px;
+          font-weight: 800;
+          color: rgba(22, 242, 179, 0.5);
+          text-transform: uppercase;
+          letter-spacing: 0.18em;
+          margin-bottom: 5px;
+        }
+        .pm-title {
+          font-size: 14px;
+          font-weight: 800;
+          color: #f1f5f9;
+          line-height: 1.35;
+          letter-spacing: -0.02em;
+        }
+        .pm-close {
+          flex-shrink: 0;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          width: 30px;
+          height: 30px;
+          border-radius: 8px;
+          background: rgba(255, 255, 255, 0.04);
+          border: 1px solid rgba(255, 255, 255, 0.08);
+          color: rgba(255, 255, 255, 0.4);
+          cursor: pointer;
+          transition: all 0.2s;
+        }
+        .pm-close:hover {
+          background: rgba(239, 68, 68, 0.15);
+          border-color: rgba(239, 68, 68, 0.3);
+          color: #f87171;
+          transform: rotate(90deg);
+        }
+
+        .pm-info-body {
+          flex: 1;
+          overflow-y: auto;
+          padding: 18px;
+          scrollbar-width: thin;
+          scrollbar-color: rgba(27, 44, 104, 0.4) transparent;
+        }
+        .pm-desc {
+          font-size: 12.5px;
+          color: #64748b;
+          line-height: 1.75;
+        }
+        .pm-sep {
+          height: 1px;
+          background: rgba(27, 44, 104, 0.5);
+          margin: 16px 0;
+        }
+        .pm-sec {
+          display: flex;
+          flex-direction: column;
+          gap: 10px;
+        }
+        .pm-sec-label {
+          font-size: 10px;
+          font-weight: 800;
+          color: rgba(255, 255, 255, 0.18);
+          text-transform: uppercase;
+          letter-spacing: 0.15em;
+        }
+
+        .pm-lbtn {
+          display: flex;
+          align-items: center;
+          gap: 9px;
+          padding: 11px 13px;
+          border-radius: 11px;
+          font-size: 12.5px;
+          font-weight: 600;
+          text-decoration: none;
+          transition: all 0.2s;
+        }
+        .pm-lbtn-green {
+          background: rgba(22, 242, 179, 0.07);
+          border: 1px solid rgba(22, 242, 179, 0.18);
+          color: #16f2b3;
+        }
+        .pm-lbtn-green:hover {
+          background: rgba(22, 242, 179, 0.14);
+          border-color: rgba(22, 242, 179, 0.38);
+          transform: translateX(2px);
+        }
+        .pm-lbtn-ghost {
+          background: rgba(255, 255, 255, 0.03);
+          border: 1px solid rgba(255, 255, 255, 0.08);
+          color: #94a3b8;
+        }
+        .pm-lbtn-ghost:hover {
+          background: rgba(255, 255, 255, 0.07);
+          color: #fff;
+          transform: translateX(2px);
+        }
+
+        /* shimmer keyframe used by LazyImage via inline style */
+        @keyframes lazy-shimmer {
+          0% {
+            background-position: 200% 0;
+          }
+          100% {
+            background-position: -200% 0;
+          }
+        }
+
+        /* mobile */
+        @media (max-width: 768px) {
+          .pm-shell {
+            flex-direction: column;
+            height: 92vh;
+            border-radius: 18px;
+            max-width: 100%;
+          }
+          .pm-gallery {
+            flex: none;
+            height: 44%;
+            border-right: none;
+            border-bottom: 1px solid rgba(27, 44, 104, 0.5);
+          }
+          .pm-info {
+            width: 100%;
+            flex: 1;
+            min-height: 0;
+          }
         }
       `}</style>
     </>
