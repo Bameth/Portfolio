@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import {
   Github,
   ExternalLink,
@@ -8,7 +8,9 @@ import {
   ChevronRight,
   Eye,
 } from "lucide-react";
+import { resolveAsset, getPreviewImage } from "@/utils/cloudinary";
 
+// ─── Status config ───────────────────────────────────────────
 const STATUS_CONFIG = {
   Déployé: {
     label: "Live",
@@ -32,7 +34,6 @@ const STATUS_CONFIG = {
     border: "rgba(167,139,250,0.25)",
   },
 };
-
 function getStatus(s) {
   return (
     STATUS_CONFIG[s] ?? {
@@ -45,82 +46,141 @@ function getStatus(s) {
   );
 }
 
-function getPreviewImage(images) {
-  if (!images?.length) return null;
-  return images.find((src) => !src.toLowerCase().endsWith(".gif")) ?? images[0];
-}
+// ─── SmartMedia ──────────────────────────────────────────────
+// Handles both images and GIFs-as-video with:
+// • Intersection Observer → only loads when visible (saves bandwidth)
+// • Skeleton shimmer while loading
+// • Smooth fade-in on load
+// • GIFs served as MP4/WebM via Cloudinary (10× smaller)
 
-/* ─── Lazy image with skeleton shimmer ─── */
-function LazyImage({ src, alt, objectFit = "cover", fadeKey }) {
-  const [state, setState] = useState("loading"); // loading | loaded | error
+function SmartMedia({
+  src,
+  alt,
+  objectFit = "cover",
+  preset = "full",
+  eager = false,
+}) {
+  const [visible, setVisible] = useState(eager);
+  const [loaded, setLoaded] = useState(false);
+  const [error, setError] = useState(false);
+  const wrapRef = useRef(null);
 
+  // Step 1 — only start loading when the element scrolls into view
   useEffect(() => {
-    if (!src) {
-      setState("error");
-      return;
-    }
-    setState("loading");
+    if (eager || !wrapRef.current) return;
+    const io = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setVisible(true);
+          io.disconnect();
+        }
+      },
+      { rootMargin: "200px" }, // pre-load 200px before it enters the viewport
+    );
+    io.observe(wrapRef.current);
+    return () => io.disconnect();
+  }, [eager]);
+
+  // Step 2 — resolve the optimised Cloudinary asset
+  const asset = resolveAsset(src, preset);
+
+  // Step 3 — preload image in JS before showing (avoids layout flicker)
+  useEffect(() => {
+    if (!visible || asset.type !== "image" || !asset.url) return;
+    setLoaded(false);
+    setError(false);
     const img = new window.Image();
-    img.src = src;
-    img.onload = () => setState("loaded");
-    img.onerror = () => setState("error");
+    img.src = asset.url;
+    img.onload = () => setLoaded(true);
+    img.onerror = () => setError(true);
     return () => {
       img.onload = null;
       img.onerror = null;
     };
-  }, [src, fadeKey]);
+  }, [visible, asset.url, asset.type]);
+
+  const shimmer = {
+    position: "absolute",
+    inset: 0,
+    background: "linear-gradient(90deg,#0d1224 25%,#1a2a50 50%,#0d1224 75%)",
+    backgroundSize: "200% 100%",
+    animation: "lazy-shimmer 1.6s infinite",
+  };
+  const fill = {
+    position: "absolute",
+    inset: 0,
+    width: "100%",
+    height: "100%",
+    objectFit,
+  };
 
   return (
-    <div style={{ position: "absolute", inset: 0, overflow: "hidden" }}>
-      {/* Shimmer skeleton */}
-      {state === "loading" && (
-        <div
-          style={{
-            position: "absolute",
-            inset: 0,
-            background:
-              "linear-gradient(90deg, #0d1224 25%, #151f40 50%, #0d1224 75%)",
-            backgroundSize: "200% 100%",
-            animation: "lazy-shimmer 1.5s infinite",
-          }}
-        />
+    <div
+      ref={wrapRef}
+      style={{
+        position: "absolute",
+        inset: 0,
+        overflow: "hidden",
+        background: "#060918",
+      }}
+    >
+      {/* Shimmer — shown while not yet loaded */}
+      {(!visible || (!loaded && !error && asset.type === "image")) && (
+        <div style={shimmer} />
       )}
-      {/* Error */}
-      {state === "error" && (
+
+      {/* Error state */}
+      {error && (
         <div
           style={{
-            position: "absolute",
-            inset: 0,
-            background: "#080b1e",
+            ...fill,
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
+            background: "#060918",
           }}
         >
-          <span style={{ color: "#334155", fontSize: "2rem" }}>⚠</span>
+          <span style={{ color: "#1e3a5f", fontSize: "2rem" }}>⚠</span>
         </div>
       )}
-      {/* Image — eslint-disable-next-line @next/next/no-img-element */}
-      {/* Using <img> intentionally here: we manage load state manually via new window.Image() */}
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
-        src={src}
-        alt={alt ?? ""}
-        style={{
-          position: "absolute",
-          inset: 0,
-          width: "100%",
-          height: "100%",
-          objectFit,
-          opacity: state === "loaded" ? 1 : 0,
-          transition: "opacity 0.35s ease",
-        }}
-      />
+
+      {/* Image */}
+      {visible && asset.type === "image" && !error && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={asset.url}
+          alt={alt ?? ""}
+          style={{
+            ...fill,
+            opacity: loaded ? 1 : 0,
+            transition: "opacity 0.4s ease",
+          }}
+        />
+      )}
+
+      {/* GIF → Video (MP4 + WebM fallback, muted, looping, autoplay) */}
+      {visible && asset.type === "video" && (
+        <video
+          autoPlay
+          loop
+          muted
+          playsInline
+          onLoadedData={() => setLoaded(true)}
+          style={{
+            ...fill,
+            opacity: loaded ? 1 : 0,
+            transition: "opacity 0.4s ease",
+          }}
+        >
+          <source src={asset.webm} type="video/webm" />
+          <source src={asset.mp4} type="video/mp4" />
+        </video>
+      )}
     </div>
   );
 }
 
-/* ─── Card ─── */
+// ─── ProjectCard ─────────────────────────────────────────────
 function ProjectCard({ project, index, featured = false }) {
   const [modalOpen, setModalOpen] = useState(false);
   const [imgIdx, setImgIdx] = useState(0);
@@ -172,11 +232,13 @@ function ProjectCard({ project, index, featured = false }) {
         className={`pc-card group relative flex flex-col bg-gradient-to-br from-[#0d1224] to-[#0a0d37] border border-[#1b2c68]/60 rounded-2xl overflow-hidden transition-all duration-500 hover:-translate-y-1 hover:border-[#16f2b3]/30 hover:shadow-2xl hover:shadow-[#16f2b3]/5 ${featured ? "md:col-span-2" : ""}`}
         style={{ "--i": index }}
       >
+        {/* Top accent */}
         <div className="flex flex-shrink-0">
           <div className="h-[1px] w-full bg-gradient-to-r from-transparent via-pink-500 to-violet-600" />
           <div className="h-[1px] w-full bg-gradient-to-r from-violet-600 to-transparent" />
         </div>
 
+        {/* Terminal header */}
         <div className="flex items-center gap-3 px-5 py-3 border-b border-[#1b2c68]/40 flex-shrink-0">
           <div className="flex gap-1.5">
             <span className="w-2.5 h-2.5 rounded-full bg-red-400" />
@@ -202,7 +264,7 @@ function ProjectCard({ project, index, featured = false }) {
           </span>
         </div>
 
-        {/* Preview */}
+        {/* Card preview — IntersectionObserver lazy, never a GIF */}
         <div
           className="relative cursor-pointer flex-shrink-0 overflow-hidden"
           style={{ aspectRatio: "16/9" }}
@@ -212,14 +274,19 @@ function ProjectCard({ project, index, featured = false }) {
           onKeyDown={(e) => e.key === "Enter" && open()}
         >
           {previewSrc ? (
-            <LazyImage src={previewSrc} alt={project.name} objectFit="cover" />
+            <SmartMedia
+              src={previewSrc}
+              alt={project.name}
+              objectFit="cover"
+              preset="card"
+            />
           ) : (
             <div className="absolute inset-0 bg-[#080b1e] flex items-center justify-center">
               <span className="text-slate-700 text-5xl font-black">{num}</span>
             </div>
           )}
           <div className="absolute inset-0 bg-gradient-to-t from-[#0a0d37]/95 via-[#0a0d37]/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end p-4 gap-2">
-            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#16f2b3] text-black text-xs font-bold rounded-lg shadow-lg">
+            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#16f2b3] text-black text-xs font-bold rounded-lg">
               <Eye size={12} /> Voir la galerie
             </span>
             {project.images.length > 1 && (
@@ -230,6 +297,7 @@ function ProjectCard({ project, index, featured = false }) {
           </div>
         </div>
 
+        {/* Content */}
         <div className="flex flex-col flex-1 p-5 gap-3">
           <h3 className="text-sm font-bold text-slate-100 leading-snug line-clamp-2 tracking-tight">
             {project.name}
@@ -299,12 +367,14 @@ function ProjectCard({ project, index, featured = false }) {
             {/* LEFT — gallery */}
             <div className="pm-gallery">
               <div className="pm-viewer">
-                <LazyImage
+                {/* eager=true in modal: load immediately when opened */}
+                <SmartMedia
                   key={imgIdx}
                   src={project.images[imgIdx]}
                   alt={`${project.name} ${imgIdx + 1}`}
                   objectFit="contain"
-                  fadeKey={imgIdx}
+                  preset="modal"
+                  eager
                 />
                 {project.images.length > 1 && (
                   <>
@@ -342,6 +412,7 @@ function ProjectCard({ project, index, featured = false }) {
                 )}
               </div>
 
+              {/* Thumbnail strip — lazy (eager=false) */}
               {project.images.length > 1 && (
                 <div className="pm-thumbs">
                   {project.images.map((src, i) => (
@@ -351,14 +422,19 @@ function ProjectCard({ project, index, featured = false }) {
                       onClick={() => setImgIdx(i)}
                       aria-label={`Image ${i + 1}`}
                     >
-                      <LazyImage src={src} alt="" objectFit="cover" />
+                      <SmartMedia
+                        src={src}
+                        alt=""
+                        objectFit="cover"
+                        preset="thumb"
+                      />
                     </button>
                   ))}
                 </div>
               )}
             </div>
 
-            {/* RIGHT — info */}
+            {/* RIGHT — info panel */}
             <div className="pm-info">
               <div className="pm-info-head">
                 <div className="min-w-0 flex-1">
@@ -396,7 +472,6 @@ function ProjectCard({ project, index, featured = false }) {
                 </div>
 
                 <p className="pm-desc">{project.description}</p>
-
                 <div className="pm-sep" />
 
                 <div className="pm-sec">
@@ -458,7 +533,6 @@ function ProjectCard({ project, index, featured = false }) {
       )}
 
       <style jsx>{`
-        /* card */
         .pc-card {
           opacity: 0;
           transform: translateY(16px);
@@ -472,7 +546,6 @@ function ProjectCard({ project, index, featured = false }) {
           }
         }
 
-        /* backdrop */
         .pm-backdrop {
           position: fixed;
           inset: 0;
@@ -494,7 +567,6 @@ function ProjectCard({ project, index, featured = false }) {
           }
         }
 
-        /* shell */
         .pm-shell {
           display: flex;
           width: 100%;
@@ -520,7 +592,6 @@ function ProjectCard({ project, index, featured = false }) {
           }
         }
 
-        /* gallery */
         .pm-gallery {
           flex: 1.35;
           display: flex;
@@ -535,7 +606,6 @@ function ProjectCard({ project, index, featured = false }) {
           background: #040710;
         }
 
-        /* nav buttons */
         .pm-nav {
           position: absolute;
           top: 50%;
@@ -566,7 +636,6 @@ function ProjectCard({ project, index, featured = false }) {
           right: 12px;
         }
 
-        /* pip dots */
         .pm-pips {
           position: absolute;
           bottom: 12px;
@@ -609,7 +678,6 @@ function ProjectCard({ project, index, featured = false }) {
           z-index: 2;
         }
 
-        /* thumbs */
         .pm-thumbs {
           display: flex;
           gap: 6px;
@@ -644,7 +712,6 @@ function ProjectCard({ project, index, featured = false }) {
           border-color: #16f2b3 !important;
         }
 
-        /* info panel */
         .pm-info {
           width: 300px;
           flex-shrink: 0;
@@ -758,7 +825,6 @@ function ProjectCard({ project, index, featured = false }) {
           transform: translateX(2px);
         }
 
-        /* shimmer keyframe used by LazyImage via inline style */
         @keyframes lazy-shimmer {
           0% {
             background-position: 200% 0;
@@ -768,7 +834,6 @@ function ProjectCard({ project, index, featured = false }) {
           }
         }
 
-        /* mobile */
         @media (max-width: 768px) {
           .pm-shell {
             flex-direction: column;
