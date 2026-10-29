@@ -1,0 +1,231 @@
+@import "tailwindcss";
+
+/* ───────────────────────── Design tokens ─────────────────────────
+   Valeurs brutes par thème (sombre par défaut, clair via [data-theme="light"] sur <html>).
+   Tailwind les expose comme couleurs : bg-p1, text-d1, border-l2, text-mint…
+   Les rendus canvas/WebGL utilisent les copies de src/lib/theme.ts. */
+
+:root {
+  --bg: #0d1224;
+  --p1: #0a0f1e;
+  --p2: #070b17;
+  --p3: #060914;
+  --l0: #121a36;
+  --l1: #161f3d;
+  --l2: #1c2647;
+  --sel: #16224a;
+  --l3: #2a3560;
+  --d2: #3a4570;
+  --d1: #7c87ad;
+  --t2: #b9c0d8;
+  --t1: #d3d8e8;
+  --mint: #16f2b3;
+  --pink: #f626af;
+  --amber: #fcd34d;
+  --violet: #a78bfa;
+  --orange: #fb923c;
+  --blue: #60a5fa;
+  --bar: rgba(13, 18, 36, 0.92);
+
+  /* Dimensions de la coque « éditeur » : la gouttière et la minimap n'apparaissent qu'en grand écran. */
+  --gutter-w: 0px;
+  --minimap-w: 0px;
+  --section-x: clamp(20px, 4vw, 64px);
+
+  color-scheme: dark;
+}
+
+:root[data-theme="light"] {
+  --bg: #f3efe6;
+  --p1: #eae5d9;
+  --p2: #e4ded0;
+  --p3: #e4ded0;
+  --l0: #dcd5c6;
+  --l1: #ddd6c7;
+  --l2: #d2caba;
+  --sel: #dcd5c3;
+  --l3: #b9b09d;
+  --d2: #9c937f;
+  --d1: #6a6354;
+  --t2: #3a3d4a;
+  --t1: #1b1e2b;
+  --mint: #0a8f69;
+  --pink: #c8137f;
+  --amber: #a66f00;
+  --violet: #6b4cd6;
+  --orange: #c2540a;
+  --blue: #2361d9;
+  --bar: rgba(243, 239, 230, 0.92);
+
+  color-scheme: light;
+}
+
+@media (min-width: 700px) {
+  :root { --gutter-w: 56px; }
+}
+@media (min-width: 1100px) {
+  :root { --minimap-w: 84px; }
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-p1: var(--p1);
+  --color-p2: var(--p2);
+  --color-p3: var(--p3);
+  --color-l0: var(--l0);
+  --color-l1: var(--l1);
+  --color-l2: var(--l2);
+  --color-sel: var(--sel);
+  --color-l3: var(--l3);
+  --color-d2: var(--d2);
+  --color-d1: var(--d1);
+  --color-t2: var(--t2);
+  --color-t1: var(--t1);
+  --color-mint: var(--mint);
+  --color-pink: var(--pink);
+  --color-amber: var(--amber);
+  --color-violet: var(--violet);
+  --color-orange: var(--orange);
+  --color-blue: var(--blue);
+  --color-bar: var(--bar);
+
+  --font-sans: var(--font-anybody), system-ui, sans-serif;
+  --font-mono: var(--font-martian), ui-monospace, monospace;
+
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@theme {
+  /* Points de rupture du design. */
+  --breakpoint-mid: 700px;
+  --breakpoint-wide: 980px;
+  --breakpoint-desk: 1100px;
+
+  --spacing-header: 44px;
+  --spacing-crumb: 24px;
+  --spacing-status: 26px;
+}
+
+/* ───────────────────────── Base ───────────────────────── */
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+    background: var(--bg);
+  }
+
+  body {
+    min-height: 100vh;
+    background: var(--bg);
+    color: var(--t1);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+  }
+
+  a {
+    color: var(--mint);
+  }
+  a:hover {
+    color: var(--pink);
+  }
+
+  button {
+    cursor: pointer;
+  }
+
+  ::selection {
+    background: rgba(22, 242, 179, 0.25);
+    color: var(--mint);
+  }
+
+  ::-webkit-scrollbar {
+    width: 0;
+    height: 0;
+  }
+
+  :focus-visible {
+    outline: 1px dashed var(--mint);
+    outline-offset: 3px;
+  }
+
+  /* Le curseur natif est remplacé par un caret (components/shell/Caret). */
+  @media (pointer: fine) {
+    body,
+    a,
+    button,
+    input,
+    textarea {
+      cursor: none;
+    }
+  }
+
+  /* Zones tactiles agrandies sur mobile, sans changer la mise en page. */
+  @media (pointer: coarse) {
+    a,
+    button {
+      position: relative;
+      -webkit-tap-highlight-color: transparent;
+    }
+    a::after,
+    button::after {
+      content: "";
+      position: absolute;
+      inset: -9px -4px;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
+  }
+}
+
+/* ─────────────── Ce que Tailwind n'exprime pas proprement ─────────────── */
+
+@layer components {
+  /* Grand titre de section : police variable élargie au survol jusqu'à --wx (calculé en JS). */
+  .section-title {
+    --wb: 60;
+    margin: 0;
+    font-size: clamp(60px, 11vw, 200px);
+    line-height: 0.82;
+    text-transform: uppercase;
+    font-variation-settings: "wdth" var(--wb), "wght" 900;
+    transition: font-variation-settings 0.6s cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+  .section-title:hover {
+    font-variation-settings: "wdth" var(--wx, 100), "wght" 900;
+  }
+
+  /* Padding vertical des sections, réduit quand la section est repliée. */
+  .section-fold {
+    --pt: clamp(80px, 10vw, 150px);
+    padding: var(--pt) var(--section-x) clamp(80px, 10vw, 150px);
+  }
+  .section-fold[data-folded] {
+    --pt: clamp(40px, 5vw, 64px);
+    padding-bottom: clamp(28px, 4vw, 48px);
+  }
+
+  /* Bouton « carte de lien » de la section contact (hover : soulèvement + couleur menthe). */
+  .link-card {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 4px;
+    min-height: 64px;
+    padding: 14px 16px;
+    border: 1px solid var(--l3);
+    border-radius: 6px;
+    background: var(--p1);
+    color: var(--t1);
+    transition: border-color 0.2s, transform 0.2s, color 0.2s;
+  }
+  .link-card:hover {
+    border-color: var(--mint);
+    color: var(--mint);
+    transform: translateY(-2px);
+  }
+}
