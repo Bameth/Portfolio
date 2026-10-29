@@ -130,14 +130,21 @@ export class GlyphHead {
     this.cleanups.push(() => removeEventListener("deviceorientation", onTilt));
     const DOE = window.DeviceOrientationEvent as unknown as { requestPermission?: () => Promise<string> } | undefined;
     if (DOE?.requestPermission) {
-      let asked = false;
-      this.askGyro = () => {
-        if (asked) return;
-        asked = true;
-        DOE.requestPermission!().then((st) => { if (st === "granted") addEventListener("deviceorientation", onTilt); }).catch(() => {});
+      // iOS refuse la demande si elle ne suit pas un vrai geste (ex. fin de défilement) : on réessaie au geste suivant.
+      let settled = false, pending = false;
+      const stop = () => { removeEventListener("click", ask); removeEventListener("touchend", ask); };
+      const ask = () => {
+        if (settled || pending) return;
+        pending = true;
+        DOE.requestPermission!()
+          .then((st) => { settled = true; stop(); if (st === "granted") addEventListener("deviceorientation", onTilt); })
+          .catch(() => {})
+          .finally(() => { pending = false; });
       };
-      addEventListener("click", this.askGyro, { once: true });
-      addEventListener("touchend", this.askGyro, { once: true });
+      this.askGyro = ask;
+      addEventListener("click", ask);
+      addEventListener("touchend", ask);
+      this.cleanups.push(stop);
     } else addEventListener("deviceorientation", onTilt);
   }
 
@@ -438,8 +445,10 @@ export class GlyphHead {
     const dt = Math.min(64, now - (this.lastHeadTick || now));
     this.lastHeadTick = now;
 
-    // Passage automatique à la photo ~2 s après la fin de l'impression (ou si la 3D ne charge pas).
-    if (!this.autoSwitched && this.s && this.buildStart == null && this.photoReady) {
+    // Ordinateur : passage automatique à la photo ~2 s après l'impression.
+    // Téléphone : la 3D reste affichée pour suivre le gyroscope ; un toucher bascule vers la photo.
+    // Dans les deux cas, la photo prend le relais si la 3D ne charge pas.
+    if (!this.coarse && !this.autoSwitched && this.s && this.buildStart == null && this.photoReady) {
       this.switchAt ||= now + 2200;
       if (now > this.switchAt) { this.autoSwitched = true; if (!this.hovering) this.photoTarget = 1; }
     }

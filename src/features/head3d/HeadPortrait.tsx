@@ -48,7 +48,7 @@ export function HeadPortrait() {
     <div data-in="" className="w-full max-w-[300px] justify-self-start mid:max-w-[380px] mid:justify-self-end">
       <div className="flex justify-between pb-2.5 font-mono text-[11px] text-d1">
         <span ref={label}>ameth.ts</span>
-        <span className="text-d2">{coarse ? t("toucher → 3D ⇄ photo", "tap → 3D ⇄ photo") : t("survol → 3D · clic ⇄ photo", "hover → 3D · click ⇄ photo")}</span>
+        <span className="text-d2">{coarse ? t("incline le téléphone · toucher ⇄ photo", "tilt your phone · tap ⇄ photo") : t("survol → 3D · clic ⇄ photo", "hover → 3D · click ⇄ photo")}</span>
       </div>
       <div data-tilt="1.7" className="relative transform-3d">
         <div data-photo="" className="relative aspect-4/5 overflow-hidden rounded border border-l2 bg-p1 shadow-[0_40px_90px_rgba(22,242,179,.08)]">

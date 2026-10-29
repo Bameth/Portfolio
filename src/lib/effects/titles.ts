@@ -81,11 +81,12 @@ export function setupReveals(): () => void {
 /** Calcule pour chaque titre la largeur de police maximale qui tient sur sa ligne. */
 export function fitTitles() {
   document.querySelectorAll<HTMLElement>("h2[data-title]").forEach((el) => {
-    const section = el.closest("section");
-    if (!section || !el.offsetWidth) return;
-    const cs = getComputedStyle(section), sr = section.getBoundingClientRect();
-    const left = sr.left + parseFloat(cs.paddingLeft);
-    const avail = section.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight) - 6;
+    // On mesure dans le conteneur direct : en colonne (contact), le titre ne doit pas déborder sur la voisine.
+    const box = el.parentElement;
+    if (!box || !el.offsetWidth) return;
+    const cs = getComputedStyle(box), br = box.getBoundingClientRect();
+    const left = br.left + parseFloat(cs.paddingLeft);
+    const avail = box.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight) - 6;
     const prevTransition = el.style.transition, prevTransform = el.style.transform;
     const base = parseFloat(getComputedStyle(el).getPropertyValue("--wb")) || 60;
     el.dataset.wb = String(base);

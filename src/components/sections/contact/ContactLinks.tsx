@@ -23,7 +23,7 @@ export function ContactLinks() {
 
   return (
     <div className="flex min-w-0 flex-col gap-7">
-      <SectionTitle reveal={false}>{t("Écris-moi", "Write me")}<TitleAccent>.</TitleAccent></SectionTitle>
+      <SectionTitle reveal={false} className="text-[clamp(60px,10vw,180px)]">{t("Écris-moi", "Write me")}<TitleAccent>.</TitleAccent></SectionTitle>
       <div className="flex items-center gap-2.5 font-mono text-[13px] text-d1">
         <span className="size-2 flex-none rounded-full bg-mint shadow-[0_0_0_4px_rgba(22,242,179,.15)]" />
         <span>{t("Il est", "It's")}</span>
