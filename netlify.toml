@@ -1,0 +1,8 @@
+[build]
+  # npm ci repart d'un node_modules vide : le cache de Netlify ne peut plus masquer
+  # les binaires natifs Linux de Tailwind v4 (@tailwindcss/oxide, lightningcss).
+  command = "npm ci && npm run build"
+
+[build.environment]
+  NODE_VERSION = "22"
+  NEXT_TELEMETRY_DISABLED = "1"
