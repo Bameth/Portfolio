@@ -1,7 +1,8 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  output: "standalone",
+  // Sortie autonome uniquement pour l'image Docker ; Netlify et Vercel gèrent le build eux-mêmes.
+  output: process.env.NEXT_OUTPUT === "standalone" ? "standalone" : undefined,
   // Un package-lock.json existe aussi dans le dossier personnel : on fixe la racine du projet.
   outputFileTracingRoot: __dirname,
   reactStrictMode: true,
