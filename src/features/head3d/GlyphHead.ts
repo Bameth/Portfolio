@@ -1,5 +1,5 @@
 import type * as THREE_NS from "three";
-import { CODE_SAMPLE } from "@/content/terminal";
+import { PORTRAIT_CODE } from "@/content/terminal";
 import { FEATURES } from "@/config/features";
 import { clamp, isCoarsePointer, prefersReducedMotion } from "@/lib/env";
 import { cancelReveal } from "@/lib/effects/titles";
@@ -7,6 +7,7 @@ import { pointer } from "@/lib/pointer";
 import { RAW, type Theme } from "@/lib/theme";
 import { monoFont } from "@/lib/text";
 import type { Lang } from "@/types/content";
+import { equalize, pickEvenly, readPhotoMaps, smoothNormals, surfaceArea, type PhotoMaps } from "./sampling";
 import { FRAGMENT_SHADER, VERTEX_SHADER } from "./shaders";
 
 type Three = typeof THREE_NS;
@@ -52,6 +53,14 @@ interface Scene {
 }
 
 const ATLAS_COLS = 16, ATLAS_ROWS = 8, CELL = 64;
+/** Candidats tirés par glyphe retenu : plus il y en a, plus la répartition est régulière (mais lente). */
+const OVERSAMPLING = { desktop: 6, mobile: 4 };
+/** Compilation : un balayage toutes les SCAN_EVERY ms, qui dure SCAN_MS. */
+const SCAN_EVERY = 7000, SCAN_MS = 1800;
+/** Rotation au doigt : radians par pixel, limite (le modèle n'a pas d'arrière) et pause avant de reprendre. */
+const DRAG_SENSITIVITY = 0.006, MAX_DRAG_YAW = 0.5, DRAG_HOLD_MS = 2500;
+/** Le modèle est un relief de face : au-delà de ~30°, on verrait ses côtés vides. */
+const MAX_YAW = 0.5;
 
 /**
  * Portrait du héros : la tête 3D (GLB) rendue en glyphes de code, en fondu avec la photo.
@@ -68,7 +77,9 @@ export class GlyphHead {
   private yaw = 0;
   private pitch = 0;
   private buildStart: number | null = null;
-  private drag: { x: number; y: number; moved: boolean } | null = null;
+  private drag: { x: number; yaw: number; y: number; moved: boolean } | null = null;
+  /** Après un glissement, la tête garde sa position jusqu'à cet instant. */
+  private holdUntil = 0;
   private lastTick = 0;
 
   // Fondu photo ⇄ 3D : 0 = glyphes, 1 = photo.
@@ -80,12 +91,6 @@ export class GlyphHead {
   private switchAt = 0;
   private failAt = 0;
   private lastHeadTick = 0;
-
-  // Gyroscope (mobile).
-  private gyroYaw: number | null = null;
-  private gyroPitch = 0;
-  private gyroBase: number | null = null;
-  private askGyro: (() => void) | null = null;
 
   // Dislocation au défilement.
   private burst = 0;
@@ -100,7 +105,6 @@ export class GlyphHead {
 
   constructor(private readonly el: GlyphHeadElements, private readonly opts: GlyphHeadOptions) {
     this.initPhoto();
-    this.initGyro();
     this.load();
   }
 
@@ -117,35 +121,6 @@ export class GlyphHead {
     box.addEventListener("mouseenter", enter);
     box.addEventListener("mouseleave", leave);
     this.cleanups.push(() => { box.removeEventListener("mouseenter", enter); box.removeEventListener("mouseleave", leave); });
-  }
-
-  /** Android : direct ; iOS 13+ : après autorisation, qui exige un geste de l'utilisateur. */
-  private initGyro() {
-    const onTilt = (e: DeviceOrientationEvent) => {
-      if (e.gamma == null || e.beta == null) return;
-      this.gyroBase ??= e.beta;
-      this.gyroYaw = clamp(e.gamma / 30, -1, 1);
-      this.gyroPitch = clamp((e.beta - this.gyroBase) / 25, -1, 1);
-    };
-    this.cleanups.push(() => removeEventListener("deviceorientation", onTilt));
-    const DOE = window.DeviceOrientationEvent as unknown as { requestPermission?: () => Promise<string> } | undefined;
-    if (DOE?.requestPermission) {
-      // iOS refuse la demande si elle ne suit pas un vrai geste (ex. fin de défilement) : on réessaie au geste suivant.
-      let settled = false, pending = false;
-      const stop = () => { removeEventListener("click", ask); removeEventListener("touchend", ask); };
-      const ask = () => {
-        if (settled || pending) return;
-        pending = true;
-        DOE.requestPermission!()
-          .then((st) => { settled = true; stop(); if (st === "granted") addEventListener("deviceorientation", onTilt); })
-          .catch(() => {})
-          .finally(() => { pending = false; });
-      };
-      this.askGyro = ask;
-      addEventListener("click", ask);
-      addEventListener("touchend", ask);
-      this.cleanups.push(stop);
-    } else addEventListener("deviceorientation", onTilt);
   }
 
   private async load() {
@@ -180,8 +155,12 @@ export class GlyphHead {
     // Géométrie normalisée : centrée, hauteur 2.
     let geo = source.geometry.clone();
     geo.applyMatrix4(source.matrixWorld);
+    if (!geo.attributes.normal) {
+      // Sans normales d'origine, on les calcule avant de séparer les triangles : sinon le relief est en facettes.
+      if (geo.index) smoothNormals(geo);
+      else geo.computeVertexNormals();
+    }
     if (geo.index) geo = geo.toNonIndexed();
-    if (!geo.attributes.normal) geo.computeVertexNormals();
     geo.computeBoundingBox();
     const bb = geo.boundingBox!, center = new THREE.Vector3();
     bb.getCenter(center);
@@ -190,21 +169,14 @@ export class GlyphHead {
     geo.scale(scale, scale, scale);
     const sampler = new Sampler(new THREE.Mesh(geo)).build();
 
-    // Luminance de la texture (si présente), pour moduler la teinte des glyphes.
-    let texData: Uint8ClampedArray | null = null;
+    // Tons et zones de détail de la photo (si le modèle a une texture).
     const map = (source.material as THREE_NS.MeshStandardMaterial | undefined)?.map;
-    if (map?.image && geo.attributes.uv) {
-      try {
-        const c = document.createElement("canvas");
-        c.width = c.height = 256;
-        const x = c.getContext("2d", { willReadFrequently: true })!;
-        x.drawImage(map.image as CanvasImageSource, 0, 0, 256, 256);
-        texData = x.getImageData(0, 0, 256, 256).data;
-      } catch { /* texture non lisible (CORS) : teinte uniforme */ }
-    }
+    const photo: PhotoMaps | null = map?.image && geo.attributes.uv
+      ? readPhotoMaps(map.image as CanvasImageSource, map.flipY !== false)
+      : null;
 
-    // Atlas des caractères du code source.
-    const chars = [...new Set(CODE_SAMPLE.replace(/\s/g, "").split(""))].slice(0, ATLAS_COLS * ATLAS_ROWS);
+    // Atlas : les caractères du code qui compose le visage.
+    const chars = [...new Set(PORTRAIT_CODE.join("").replace(/\s/g, "").split(""))].slice(0, ATLAS_COLS * ATLAS_ROWS);
     const atlasCanvas = document.createElement("canvas");
     atlasCanvas.width = ATLAS_COLS * CELL;
     atlasCanvas.height = ATLAS_ROWS * CELL;
@@ -218,29 +190,35 @@ export class GlyphHead {
     atlas.minFilter = THREE.LinearMipmapLinearFilter;
     atlas.generateMipmaps = true;
 
-    // Échantillonnage de la surface.
-    const N = innerWidth < 700 ? 9000 : 14000;
-    const pos = new Float32Array(N * 3), nor = new Float32Array(N * 3), ch = new Float32Array(N), tint = new Float32Array(N);
-    const lum = new Float32Array(N), rnd = new Float32Array(N), tgt = new Float32Array(N * 2);
+    // Échantillonnage de la surface : on tire large, puis on garde des points bien répartis.
+    const small = innerWidth < 700, N = small ? 10000 : 16000, C = N * (small ? OVERSAMPLING.mobile : OVERSAMPLING.desktop);
+    const cPos = new Float32Array(C * 3), cNor = new Float32Array(C * 3), cTone = new Float32Array(C).fill(0.5), cDetail = new Float32Array(C);
     const p = new THREE.Vector3(), n = new THREE.Vector3(), col = new THREE.Color(), uv = new THREE.Vector2();
-    for (let i = 0; i < N; i++) {
+    for (let i = 0; i < C; i++) {
       sampler.sample(p, n, col, uv);
-      pos.set([p.x, p.y, p.z], i * 3);
-      nor.set([n.x, n.y, n.z], i * 3);
-      ch[i] = Math.floor(Math.random() * chars.length);
-      const r = Math.random();
-      tint[i] = r < 0.05 ? 1 : r < 0.08 ? 2 : 0;
-      rnd[i] = Math.random();
-      let l = 0.5;
-      if (texData && map) {
-        const tx = clamp(Math.floor(uv.x * 256), 0, 255), ty = clamp(Math.floor((map.flipY === false ? uv.y : 1 - uv.y) * 256), 0, 255);
-        const q = (ty * 256 + tx) * 4;
-        l = (texData[q] * 0.3 + texData[q + 1] * 0.59 + texData[q + 2] * 0.11) / 255;
-      }
-      lum[i] = l;
+      cPos[i * 3] = p.x; cPos[i * 3 + 1] = p.y; cPos[i * 3 + 2] = p.z;
+      cNor[i * 3] = n.x; cNor[i * 3 + 1] = n.y; cNor[i * 3 + 2] = n.z;
+      if (photo) { cTone[i] = photo.tone(uv.x, uv.y); cDetail[i] = photo.detail(uv.x, uv.y); }
     }
-    const sorted = [...lum].sort((a, b) => a - b), lo = sorted[Math.floor(N * 0.03)], hi = sorted[Math.floor(N * 0.97)];
-    for (let i = 0; i < N; i++) lum[i] = clamp((lum[i] - lo) / Math.max(0.01, hi - lo), 0, 1);
+    const picked = pickEvenly(cPos, cDetail, N, surfaceArea(geo));
+
+    const pos = new Float32Array(N * 3), nor = new Float32Array(N * 3), ch = new Float32Array(N), tint = new Float32Array(N);
+    const rawTone = new Float32Array(N), rnd = new Float32Array(N), tgt = new Float32Array(N * 2), glyphSize = new Float32Array(N);
+    picked.forEach((c, i) => {
+      pos.set(cPos.subarray(c * 3, c * 3 + 3), i * 3);
+      nor.set(cNor.subarray(c * 3, c * 3 + 3), i * 3);
+      rawTone[i] = cTone[c];
+      ch[i] = Math.floor(Math.random() * chars.length);
+      rnd[i] = Math.random();
+    });
+    const lum = photo ? equalize(rawTone).map((v) => Math.pow(v, 1.1)) : rawTone;
+    picked.forEach((c, i) => {
+      // Couleurs d'accent sur les contours du visage, très rares ailleurs.
+      const accent = cDetail[c] > 0.55 ? 0.09 : 0.025, r = Math.random();
+      tint[i] = r < accent * 0.7 ? 1 : r < accent ? 2 : 0;
+      // Glyphes plus fins dans les zones sombres et détaillées, pour que les traits ressortent.
+      glyphSize[i] = (0.72 + 0.42 * lum[i]) * (1 - 0.18 * cDetail[c]);
+    });
     for (let i = 0; i < N * 2; i++) tgt[i] = Math.random();
 
     const g = new THREE.BufferGeometry();
@@ -250,16 +228,18 @@ export class GlyphHead {
     g.setAttribute("aTi", new THREE.BufferAttribute(tint, 1));
     g.setAttribute("aLu", new THREE.BufferAttribute(lum, 1));
     g.setAttribute("aRn", new THREE.BufferAttribute(rnd, 1));
+    g.setAttribute("aSz", new THREE.BufferAttribute(glyphSize, 1));
     g.setAttribute("aTg", new THREE.BufferAttribute(tgt, 2));
 
     const palette = RAW[this.opts.getTheme()];
     const uniforms: Record<string, THREE_NS.IUniform> = {
-      uAtlas: { value: atlas }, uScale: { value: 400 }, uSize: { value: 0.042 }, uBuild: { value: -1.2 },
+      uAtlas: { value: atlas }, uScale: { value: 400 }, uSize: { value: 0.034 }, uBuild: { value: -1.2 },
       uBase: { value: new THREE.Color(palette.base) }, uMint: { value: new THREE.Color(palette.mint) },
       uPink: { value: new THREE.Color(palette.pink) }, uDim: { value: new THREE.Color(palette.dim) },
-      uTex: { value: texData ? 1 : 0 }, uTime: { value: 0 }, uBurst: { value: 0 }, uMode: { value: 0 }, uGo: { value: 0 },
+      uTex: { value: photo ? 1 : 0 }, uTime: { value: 0 }, uBurst: { value: 0 }, uMode: { value: 0 }, uGo: { value: 0 },
       uRect: { value: new THREE.Vector4(0, 0, 1, 1) }, uBox: { value: new THREE.Vector4(0, 0, 1, 1) },
       uT: { value: 0.268 }, uTS: { value: 6 }, uFade: { value: 2 },
+      uChars: { value: chars.length }, uScan: { value: -9 }, uCycle: { value: 0 },
     };
     const material = new THREE.ShaderMaterial({ uniforms, vertexShader: VERTEX_SHADER, fragmentShader: FRAGMENT_SHADER });
     const pivot = new THREE.Group();
@@ -273,7 +253,7 @@ export class GlyphHead {
 
     this.s = { THREE, renderer, camera, scene, pivot, geometry: g, uniforms, count: N, demo, W: 0, H: 0 };
     this.themeApplied = null;
-    this.yaw = this.reduce ? 0 : 2.6;
+    this.yaw = this.reduce ? 0 : MAX_YAW;
     this.resize();
     this.bindCanvas();
     this.print();
@@ -282,29 +262,34 @@ export class GlyphHead {
   private bindCanvas() {
     const cv = this.el.canvas;
     const down = (e: PointerEvent) => {
-      this.drag = { x: e.clientX, y: e.clientY, moved: false };
+      this.drag = { x: e.clientX, y: e.clientY, yaw: this.yaw, moved: false };
       try { cv.setPointerCapture(e.pointerId); } catch { /* déjà capturé */ }
     };
     const move = (e: PointerEvent) => {
       const d = this.drag;
-      if (d && Math.abs(e.clientX - d.x) + Math.abs(e.clientY - d.y) > 4) d.moved = true;
+      if (!d) return;
+      if (Math.abs(e.clientX - d.x) + Math.abs(e.clientY - d.y) > 4) d.moved = true;
+      if (d.moved) this.yaw = clamp(d.yaw + (e.clientX - d.x) * DRAG_SENSITIVITY, -MAX_DRAG_YAW, MAX_DRAG_YAW);
+    };
+    const release = () => {
+      this.drag = null;
+      this.holdUntil = performance.now() + DRAG_HOLD_MS;
     };
     const up = () => {
-      const d = this.drag;
-      if (!d) return;
-      this.drag = null;
-      if (!d.moved) this.toggle();
+      const tapped = this.drag && !this.drag.moved;
+      release();
+      if (tapped) this.toggle();
     };
     cv.addEventListener("pointerdown", down);
     cv.addEventListener("pointermove", move);
     cv.addEventListener("pointerup", up);
-    cv.addEventListener("pointercancel", up);
+    cv.addEventListener("pointercancel", release);
     cv.style.cursor = "pointer";
     this.cleanups.push(() => {
       cv.removeEventListener("pointerdown", down);
       cv.removeEventListener("pointermove", move);
       cv.removeEventListener("pointerup", up);
-      cv.removeEventListener("pointercancel", up);
+      cv.removeEventListener("pointercancel", release);
     });
   }
 
@@ -317,14 +302,13 @@ export class GlyphHead {
     if (this.reduce || !FEATURES.headPrint) { s.uniforms.uBuild.value = 1.3; return; }
     this.buildStart = performance.now();
     s.uniforms.uBuild.value = -1.1;
-    this.yaw = 1.6;
+    this.yaw = MAX_YAW;
   }
 
   /** Bascule photo ⇄ glyphes (clic ou toucher). */
   toggle() {
     this.autoSwitched = true;
     this.photoTarget = this.photoTarget > 0.5 ? 0 : 1;
-    this.askGyro?.();
   }
 
   resize() {
@@ -386,14 +370,13 @@ export class GlyphHead {
     }
     const building = this.buildStart != null;
 
-    if (!this.drag) {
+    if (!this.drag && (building || now > this.holdUntil)) {
       let ty = 0, tp = 0;
-      if (building) ty = (1 - (U.uBuild.value + 1.1) / 2.3) * 1.6;
-      else if (this.coarse && this.gyroYaw != null && FEATURES.headFollowsCursor) { ty = this.gyroYaw * 0.75; tp = this.gyroPitch * 0.22; }
+      if (building) ty = (1 - (U.uBuild.value + 1.1) / 2.3) * MAX_YAW;
       else if (!this.coarse && FEATURES.headFollowsCursor) {
-        ty = Math.tanh((pointer.x - (r.left + r.width / 2)) / Math.max(260, innerWidth * 0.3)) * 0.75;
-        tp = Math.tanh((pointer.y - (r.top + r.height * 0.4)) / 500) * 0.22;
-      } else ty = Math.sin(now / 3200) * 0.6;
+        ty = Math.tanh((pointer.x - (r.left + r.width / 2)) / Math.max(260, innerWidth * 0.3)) * MAX_YAW;
+        tp = Math.tanh((pointer.y - (r.top + r.height * 0.4)) / 500) * 0.18;
+      } else ty = Math.sin(now / 3200) * MAX_YAW * 0.8;
       if (this.reduce) { ty = 0; tp = 0; }
       let dy = ty - this.yaw;
       dy = Math.atan2(Math.sin(dy), Math.cos(dy));
@@ -413,6 +396,8 @@ export class GlyphHead {
       (U.uDim.value as THREE_NS.Color).set(c.dim);
     }
 
+    this.tickScan(now, building);
+
     if (this.overlayOn && this.overlay) {
       s.camera.setViewOffset(s.W, s.H, -r.left, -this.anchorTop, innerWidth, innerHeight);
       this.overlay.renderer.render(s.scene, s.camera);
@@ -420,6 +405,13 @@ export class GlyphHead {
     } else if (r.bottom > 0) s.renderer.render(s.scene, s.camera);
 
     this.updateLabel(building);
+  }
+
+  /** Balayage périodique de « compilation » : une ligne parcourt le visage et renouvelle les caractères. */
+  private tickScan(now: number, building: boolean) {
+    const U = this.s!.uniforms, phase = now % SCAN_EVERY;
+    U.uCycle.value = Math.floor(now / SCAN_EVERY);
+    U.uScan.value = this.reduce || building || phase > SCAN_MS ? -9 : 1.15 - (phase / SCAN_MS) * 2.3;
   }
 
   private updateLabel(building: boolean) {
@@ -446,7 +438,7 @@ export class GlyphHead {
     this.lastHeadTick = now;
 
     // Ordinateur : passage automatique à la photo ~2 s après l'impression.
-    // Téléphone : la 3D reste affichée pour suivre le gyroscope ; un toucher bascule vers la photo.
+    // Téléphone : la 3D reste affichée et tourne seule ; un toucher bascule vers la photo.
     // Dans les deux cas, la photo prend le relais si la 3D ne charge pas.
     if (!this.coarse && !this.autoSwitched && this.s && this.buildStart == null && this.photoReady) {
       this.switchAt ||= now + 2200;

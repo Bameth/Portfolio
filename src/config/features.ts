@@ -15,6 +15,6 @@ export const FEATURES = {
   headPrint: true,
   /** Au défilement, les glyphes de la tête construisent le texte de la section suivante. */
   headExplode: true,
-  /** La tête suit le curseur (ou le gyroscope sur mobile). */
+  /** La tête suit le curseur sur ordinateur. */
   headFollowsCursor: true,
 } as const;

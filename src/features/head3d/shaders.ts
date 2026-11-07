@@ -2,15 +2,17 @@
  * Shaders des glyphes de la tête 3D.
  * - uBuild : hauteur de la « tête d'impression » (les points au-dessus sont masqués) ;
  * - uBurst : explosion radiale ;
- * - uMode 2 / uGo : chaque glyphe rejoint une cible à l'écran (aTg) pour construire du texte.
+ * - uMode 2 / uGo : chaque glyphe rejoint une cible à l'écran (aTg) pour construire du texte ;
+ * - uScan : ligne de « compilation » qui balaie le visage et renouvelle les caractères.
  */
 export const VERTEX_SHADER = /* glsl */ `
-attribute float aCh, aTi, aLu, aRn;
+attribute float aCh, aTi, aLu, aRn, aSz;
 attribute vec2 aTg;
 uniform float uMode, uGo, uT, uTS;
 uniform vec4 uRect, uBox;
 uniform float uScale, uSize, uBuild, uTex, uTime, uBurst;
-varying float vK, vR2, vCh, vTi, vB, vF;
+uniform float uChars, uScan, uCycle;
+varying float vK, vR2, vCh, vTi, vB, vF, vS;
 varying vec3 vN;
 
 void main() {
@@ -43,12 +45,19 @@ void main() {
   vec3 n = normalize(normalMatrix * normal);
   vN = n;
   float sh = clamp(dot(n, normalize(vec3(-.35, .45, 1.))), 0., 1.);
-  float tl = mix(.6, .35 + .65 * aLu, uTex);
-  vB = (.12 + .88 * sh) * tl;
+  float tl = mix(.6, .18 + .82 * aLu, uTex);
+  vB = (.3 + .7 * sh) * tl;
   vCh = aCh;
   vTi = aTi;
-  gl_PointSize = hide > .5 ? 0. : uSize * uScale / -mv.z * (1. + vF * .6);
-  gl_PointSize = mix(gl_PointSize, uTS, vK);
+  float size = hide > .5 ? 0. : uSize * aSz * uScale / -mv.z * (1. + vF * .6);
+
+  // Compilation : au passage de la ligne, les caractères changent et s'allument.
+  vS = (1. - smoothstep(0., .028, abs(position.y - uScan))) * (1. - hide);
+  float passed = step(uScan, position.y);
+  vCh = mod(aCh + (uCycle + passed) * 17., uChars);
+  size *= 1. + vS * .2;
+
+  gl_PointSize = mix(size, uTS, vK);
   if (uMode > 1.5 && vK > .985 && aTg.y < (uGo - .36) / .6) gl_PointSize = 0.;
 }`;
 
@@ -56,7 +65,7 @@ export const FRAGMENT_SHADER = /* glsl */ `
 uniform sampler2D uAtlas;
 uniform float uFade;
 uniform vec3 uBase, uMint, uPink, uDim;
-varying float vK, vR2, vCh, vTi, vB, vF;
+varying float vK, vR2, vCh, vTi, vB, vF, vS;
 varying vec3 vN;
 
 void main() {
@@ -68,8 +77,10 @@ void main() {
   if (vN.z < -.05 && vF < .5 && vK < .25) discard;
   if (vR2 > uFade) discard;
   vec3 col = mix(uDim, uBase, smoothstep(.05, .85, vB));
-  if (vTi > .5 && vTi < 1.5 && vB > .35) col = uMint;
-  if (vTi > 1.5 && vB > .35) col = uPink;
+  bool lit = vB > .35;
+  if (vTi > .5 && vTi < 1.5 && lit) col = uMint;
+  if (vTi > 1.5 && lit) col = uPink;
+  col = mix(col, uMint, vS * .7);
   col = mix(col, uMint, vF);
   col = mix(col, uMint, smoothstep(.6, 1., vK));
   gl_FragColor = vec4(col, 1.);

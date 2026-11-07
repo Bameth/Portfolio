@@ -62,6 +62,14 @@ export const MESSAGE_STARTS: ByLang<string[]> = {
   en: ["Hi Ameth, we're looking for a developer intern for ", "Hi Ameth, your profile caught our eye for a position as ", "Hi Ameth, I have a project for you: ", "Hey Ameth, quick technical question: ", ""],
 };
 
-/** Extrait de code réel dont les caractères composent la tête 3D en glyphes. */
-export const CODE_SAMPLE =
-  "[HttpPost('api/reservations')] public async Task<IActionResult> Reserver(ReservationDto dto) { var creneau = await _db.Creneaux.FindAsync(dto.CreneauId); if (creneau.EstPris) return Conflict(); await _wave.InitierPaiement(dto.Montant, dto.Telephone); await _sms.Envoyer(dto.Telephone, 'Reservation confirmee'); return Created(); } SELECT j.nom, s.buts, s.passes FROM joueurs j JOIN stats s ON s.joueur_id = j.id WHERE j.equipe = 'SEN' ORDER BY s.buts DESC; @GetMapping('/api/joueurs/{id}/stats') public StatsDto stats(@PathVariable Long id) { return service.statsJoueur(id); } const [matchs, setMatchs] = useState<Match[]>([]); useEffect(() => { api.get('/matchs').then(setMatchs); }, []); docker compose up -d --build && nginx -s reload ";
+/** Le code dont les caractères composent le portrait 3D. */
+export const PORTRAIT_CODE = [
+  'const ameth = { base: ["Dakar", "Montréal"], role: "full-stack" };',
+  'git commit -m "première ligne, Dakar"',
+  "while (curieux) { apprendre(); construire(); partager(); }",
+  'await deploy("gogainde.sn"); await deploy("sunuterrain.com");',
+  "SELECT passion FROM ameth WHERE ville IN ('Dakar', 'Montréal');",
+  '@GetMapping("/lions") public Equipe lions() { return equipe; }',
+  "docker compose up -d && git push origin main",
+  "if (toi.cherches(dev)) { return ameth.collaborer(toi); }",
+];
